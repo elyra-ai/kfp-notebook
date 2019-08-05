@@ -15,10 +15,15 @@
 # limitations under the License.
 #
 
-import kfp
-import notebook
 
 from kfp.dsl._container_op import BaseOp, ContainerOp
+
+
+"""
+The NotebookOp uses a python script to bootstrap the user supplied image with the required dependencies. 
+In order for the script run properly, the image used, must at a minimum, have the 'curl' utility available
+and have python3
+"""
 
 
 class NotebookOp(ContainerOp):
@@ -28,18 +33,15 @@ class NotebookOp(ContainerOp):
                  cos_endpoint: str,
                  cos_user: str,
                  cos_password: str,
+                 cos_bucket: str,
+                 cos_pull_archive: str,
                  **kwargs):
         """Create a new instance of ContainerOp.
         Args:
           notebook: name of the notebook that will be executed per this
               operation
-          kwargs: name, sidecars & is_exit_handler. See ContainerOp definition
+          kwargs: name, image, sidecars & is_exit_handler. See ContainerOp definition
         """
-        if 'image' not in kwargs:
-            kwargs['image'] = 'lresende/notebook-kubeflow-pipeline:dev'
-
-        if notebook is None:
-            ValueError("You need to provide a notebook.")
 
         self.notebook = notebook
         self.notebook_name = \
@@ -51,20 +53,62 @@ class NotebookOp(ContainerOp):
         self.cos_endpoint = cos_endpoint
         self.cos_user = cos_user
         self.cos_password = cos_password
+        self.cos_bucket = cos_bucket
+        self.cos_pull_archive = cos_pull_archive
 
-        super().__init__(**kwargs,
-            arguments=[
-                '--endpoint', self.cos_endpoint,
-                '--user', self.cos_user,
-                '--password', self.cos_password,
-                '--bucket', 'oscon',
-                '--input', self.notebook_name,
-                '--output', self.notebook_result,
-                '--output_html', self.notebook_html,
-            ]
-        )
+        if 'image' not in kwargs:  # default image used if none specified
+            kwargs['image'] = 'lresende/notebook-kubeflow-pipeline:dev'
+
+        if notebook is None:
+            ValueError("You need to provide a notebook.")
+
+        if 'arguments' not in kwargs:
+            """ If no arguments are passed, we use our own.
+                If ['arguments'] are set, we assume container's ENTRYPOINT is set and dependencies are installed
+                NOTE: Images being pulled must have python3 available on PATH and cURL utility
+            """
+            if 'bootscript' not in kwargs:
+                """ If bootscript arg with URL not provided, use the one baked in here.
+                """
+                self.bootstrap_script_url = 'https://raw.github.ibm.com/ai-workspace/ai-workspace/' \
+                                            'akchin-container-bootstrap/ai_workspace/pipeline/' \
+                                            'bootstrapper.py?token=AAAcK_Jx7rL3yTtCZjsn_6A9ULNNDABkks5dUdpVwA%3D%3D'
+
+            kwargs['command'] = ['sh', '-c']
+            kwargs['arguments'] = ['curl -LJO %s && '
+                                   'mv bootstrapper.py* bootstrapper.py && '
+                                   'python bootstrapper.py '
+                                   '--endpoint %s '
+                                   '--user %s '
+                                   '--password %s '
+                                   '--bucket %s '
+                                   '--tar-archive %s '
+                                   '--input %s '
+                                   '--output %s '
+                                   '--output-html %s' % (
+                                       self.bootstrap_script_url,
+                                       self.cos_endpoint,
+                                       self.cos_user,
+                                       self.cos_password,
+                                       self.cos_bucket,
+                                       self.cos_pull_archive,
+                                       self.notebook_name,
+                                       self.notebook_result,
+                                       self.notebook_html
+                                       )
+                                   ]
+
+        super().__init__(**kwargs)
 
     def _get_file_name_with_extension(self, name, extension):
+        """ Simple function to construct a string filename
+        Args:
+            name: name of the file
+            extension: name of the file
+
+        Returns:
+            name_with_extension: string filename
+        """
         name_with_extension = name
         if extension not in name_with_extension:
             name_with_extension = '{}.{}'.format(name, extension)
