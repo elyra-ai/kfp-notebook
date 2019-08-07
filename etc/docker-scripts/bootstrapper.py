@@ -6,7 +6,7 @@ def import_with_auto_install(package):
     try:
         return __import__(package)
     except ImportError:
-        subprocess.check_call([sys.executable, '-m', 'pip', 'install', package])
+        subprocess.check_call([sys.executable, '-m', 'pip', 'install', '--upgrade', package])
     return __import__(package)
 
 
@@ -65,6 +65,11 @@ if __name__ == '__main__':
                                access_key=input_params["user"],
                                secret_key=input_params["password"],
                                secure=False)
+
+    print("Creating work directory")
+    working_dir = 'jupyter-work-dir'
+    subprocess.call(['mkdir', '-p', working_dir, '&&', 'cd', working_dir])
+    print("Created and moving into working directory")
 
     minio_client.fget_object(bucket_name=input_params["bucket"],
                              object_name=input_params["tar-archive"],
