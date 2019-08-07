@@ -70,9 +70,9 @@ class NotebookOp(ContainerOp):
             if 'bootscript' not in kwargs:
                 """ If bootscript arg with URL not provided, use the one baked in here.
                 """
-                self.bootstrap_script_url = 'https://raw.github.ibm.com/ai-workspace/ai-workspace/' \
-                                            'akchin-container-bootstrap/ai_workspace/pipeline/' \
-                                            'bootstrapper.py?token=AAAcK_Jx7rL3yTtCZjsn_6A9ULNNDABkks5dUdpVwA%3D%3D'
+                self.bootstrap_script_url = 'https://raw.github.ibm.com/akchin/kfp-notebook/' \
+                                            'akchin-aiw-refactor/etc/docker-scripts/' \
+                                            'bootstrapper.py?token=AAAcK3n713Mj5tLZMsD7c3Pmc0kJAZ4Yks5dVEU_wA%3D%3D'
 
             kwargs['command'] = ['sh', '-c']
             kwargs['arguments'] = ['curl -LJO %s && '
