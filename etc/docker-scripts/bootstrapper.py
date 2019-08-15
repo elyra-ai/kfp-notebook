@@ -1,3 +1,4 @@
+import re
 import subprocess
 import sys
 
@@ -61,7 +62,7 @@ if __name__ == '__main__':
     input_params = parse_arguments()
 
     # Initialize minioClient with an endpoint and access/secret keys.
-    minio_client = minio.Minio(input_params["endpoint"],
+    minio_client = minio.Minio(re.sub(r'^https?://', '', input_params["endpoint"]),
                                access_key=input_params["user"],
                                secret_key=input_params["password"],
                                secure=False)
