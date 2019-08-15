@@ -73,5 +73,5 @@ dist: clean ## builds source and wheel package
 	@make bdist
 	ls -l dist
 
-install: clean ## install the package to the active Python's site-packages
-	python setup.py install
+install: clean dist ## install the package to the active Python's site-packages
+	pip install --upgrade dist/*.whl
