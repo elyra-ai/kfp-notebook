@@ -77,8 +77,7 @@ class NotebookOp(ContainerOp):
                 self.bootstrap_script_url = kwargs['bootscript']
 
             kwargs['command'] = ['sh', '-c']
-            kwargs['arguments'] = ['curl -LJO %s && '
-                                   'mv bootstrapper.py* bootstrapper.py && '
+            kwargs['arguments'] = ['curl -L %s --output bootstrapper.py && '
                                    'python bootstrapper.py '
                                    '--endpoint %s '
                                    '--user %s '
