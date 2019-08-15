@@ -67,14 +67,14 @@ class NotebookOp(ContainerOp):
                 If ['arguments'] are set, we assume container's ENTRYPOINT is set and dependencies are installed
                 NOTE: Images being pulled must have python3 available on PATH and cURL utility
             """
-            if 'bootscript' not in kwargs:
-                """ If bootscript arg with URL not provided, use the one baked in here.
+            if 'bootstrap_script' not in kwargs:
+                """ If bootstrap_script arg with URL not provided, use the one baked in here.
                 """
                 self.bootstrap_script_url = 'https://raw.github.ibm.com/ai-workspace/kfp-notebook/' \
                                             'master/etc/docker-scripts/' \
                                             'bootstrapper.py?token=AAAcK3n713Mj5tLZMsD7c3Pmc0kJAZ4Yks5dVEU_wA%3D%3D'
             else:
-                self.bootstrap_script_url = kwargs['bootscript']
+                self.bootstrap_script_url = kwargs['bootstrap_script']
 
             kwargs['command'] = ['sh', '-c']
             kwargs['arguments'] = ['curl -L %s --output bootstrapper.py && '
