@@ -73,6 +73,8 @@ class NotebookOp(ContainerOp):
                 self.bootstrap_script_url = 'https://raw.github.ibm.com/ai-workspace/kfp-notebook/' \
                                             'master/etc/docker-scripts/' \
                                             'bootstrapper.py?token=AAAcK3n713Mj5tLZMsD7c3Pmc0kJAZ4Yks5dVEU_wA%3D%3D'
+            else:
+                self.bootstrap_script_url = kwargs['bootscript']
 
             kwargs['command'] = ['sh', '-c']
             kwargs['arguments'] = ['curl -LJO %s && '
