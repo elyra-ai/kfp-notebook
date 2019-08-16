@@ -8,5 +8,7 @@ python:
 # Command to install dependencies, e.g. pip install -r requirements.txt --use-mirrors
 install: pip install -U tox-travis
 
+script:
+    make clean dist
 # Command to run tests, e.g. python setup.py test
-script: tox
+#script: tox
