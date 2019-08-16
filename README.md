@@ -5,7 +5,7 @@ KFP-Notebook is an Notebook op to enable running notebooks as part of a Kubeflow
 ## Building kfp-notebook
 
 ```bash
-make clean dist
+make clean install
 ```
 
 ## Usage
