@@ -15,4 +15,4 @@
 # limitations under the License.
 #
 
-from . import _notebook_op
+from ._notebook_op import NotebookOp
