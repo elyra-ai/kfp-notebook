@@ -49,6 +49,6 @@ setup(
     test_suite='tests',
     tests_require=test_requirements,
     url='https://github.ibm.com/ai-workspace/kfp-notebook',
-    version='0.1.0.dev',
+    version='0.2.0.dev',
     zip_safe=False,
 )
