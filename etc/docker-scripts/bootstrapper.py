@@ -80,7 +80,10 @@ if __name__ == '__main__':
     print("Unpacking........")
     subprocess.call(['tar', '-zxvf', input_params["tar-archive"]])
     print("Unpacking Complete.")
-    print("Executing notebook through Papermill....")
+    print("Executing notebook through Papermill: {} ==> {}"
+          .format(str(input_params['input']),
+                  str(input_params['output'])))
+
     papermill.execute_notebook(
         input_params['input'],
         input_params['output']
