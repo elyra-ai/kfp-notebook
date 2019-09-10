@@ -8,26 +8,31 @@ def import_with_auto_install(package):
         return __import__(package)
     except ImportError:
         subprocess.check_call([sys.executable, '-m', 'pip', 'install', '--upgrade', package])
-    return __import__(package)
 
 
 def parse_arguments():
     print("Parsing Arguments.....")
     parser = argparse.ArgumentParser(description='Description of your program')
-    parser.add_argument('-u', '--user', dest="user", help='Description for foo argument', required=True)
-    parser.add_argument('-e', '--endpoint', dest="endpoint", help='Description for foo argument', required=True)
-    parser.add_argument('-p', '--password', dest="password", help='Description for bar argument', required=True)
-    parser.add_argument('-t', '--tar-archive', dest="tar-archive", help='Description for foo argument', required=True)
-    parser.add_argument('-b', '--bucket', dest="bucket", help='Description for bar argument', required=True)
-    parser.add_argument('-i', '--input', dest="input", help='Description for bar argument', required=True)
-    parser.add_argument('-o', '--output', dest="output", help='Description for bar argument', required=True)
-    parser.add_argument('-m', '--output-html', dest="output-html", help='Description for bar argument', required=True)
+    parser.add_argument('-e', '--endpoint', dest="endpoint", help='Cloud object storage endpoint', required=True)
+    parser.add_argument('-b', '--bucket', dest="bucket", help='Cloud object storage bucket to use', required=True)
+    parser.add_argument('-t', '--tar-archive', dest="tar-archive", help='Archive containing notebook and dependency artifacts', required=True)
+    parser.add_argument('-i', '--input', dest="input", help='Notebook to execute', required=True)
+    parser.add_argument('-o', '--output', dest="output", help='Executed Notebook ', required=True)
+    parser.add_argument('-m', '--output-html', dest="output-html", help='Executed notebook converted to HTML', required=True)
     args = vars(parser.parse_args())
 
     return args
 
 
 def notebook_to_html(notebook_file, html_file):
+    """ Function to convert a Jupyter notebook file (.ipynb) into an html file
+                Args:
+                    notebook_file: object store client
+                    html_file: name of what the html output file should be
+
+                Returns:
+                    html_file: the converted notebook in html format
+                """
     print("Converting from ipynb to html....")
     nb = nbformat.read(notebook_file, as_version=4)
     html_exporter = nbconvert.HTMLExporter()
@@ -38,10 +43,39 @@ def notebook_to_html(notebook_file, html_file):
     return html_file
 
 
-def put_file_object_store(client, bucket, file_to_upload):
-    client.fput_object(bucket_name=bucket,
-                       object_name=file_to_upload,
-                       file_path=file_to_upload)
+def get_file_object_store(client, bucket_name, file_to_get):
+    """ Abstracted function to get files from an object store
+                Args:
+                    client: object store client
+                    bucket_name: bucket to place the files into
+                    file_to_get: filename
+                """
+
+    print('Get file {} from bucket {}'.format(file_to_get, bucket_name))
+
+    try:
+        client.fget_object(bucket_name=bucket_name,
+                           object_name=file_to_get,
+                           file_path=file_to_get)
+    except minio.error.ResponseError as err:
+        print(err)
+
+
+def put_file_object_store(client, bucket_name, file_to_upload):
+    """ Abstracted function to put files into an object store
+            Args:
+                client: object store client
+                bucket_name: bucket to place the files into
+                file_to_upload: filename
+            """
+
+    try:
+        client.fput_object(bucket_name=bucket_name,
+                           object_name=file_to_upload,
+                           file_path=file_to_upload)
+    except minio.error.ResponseError as err:
+        print(err)
+        raise
 
 
 if __name__ == '__main__':
@@ -56,26 +90,20 @@ if __name__ == '__main__':
     import papermill
     import nbconvert
     import nbformat
+    import os
+    from urllib.parse import urlparse
 
     print("Imports Complete.....")
 
     input_params = parse_arguments()
 
-    # Initialize minioClient with an endpoint and access/secret keys.
-    minio_client = minio.Minio(re.sub(r'^https?://', '', input_params["endpoint"]),
-                               access_key=input_params["user"],
-                               secret_key=input_params["password"],
-                               secure=False)
+    cos_endpoint = urlparse(input_params['endpoint'])
+    cos_client = minio.Minio(cos_endpoint.netloc,
+                             access_key=os.getenv('AWS_ACCESS_KEY_ID'),
+                             secret_key=os.getenv('AWS_SECRET_ACCESS_KEY'),
+                             secure=False)
 
-    print("Creating work directory")
-    working_dir = 'jupyter-work-dir'
-    subprocess.call(['mkdir', '-p', working_dir, '&&', 'cd', working_dir])
-    print("Created and moving into working directory")
-
-    minio_client.fget_object(bucket_name=input_params["bucket"],
-                             object_name=input_params["tar-archive"],
-                             file_path=input_params["tar-archive"])
-
+    get_file_object_store(cos_client, input_params['bucket'], input_params['tar-archive'])
     print("TAR Archive pulled from Object Storage.")
     print("Unpacking........")
     subprocess.call(['tar', '-zxvf', input_params["tar-archive"]])
@@ -90,9 +118,7 @@ if __name__ == '__main__':
         # parameters=
     )
     output_html_file = notebook_to_html(input_params['output'], input_params['output-html'])
-
     print("Uploading Results back to Object Storage")
-    put_file_object_store(minio_client, input_params["bucket"], output_html_file)
-    put_file_object_store(minio_client, input_params["bucket"], input_params['output'])
-
+    put_file_object_store(cos_client, input_params["bucket"], output_html_file)
+    put_file_object_store(cos_client, input_params["bucket"], input_params['output'])
     print("Upload Complete.")
