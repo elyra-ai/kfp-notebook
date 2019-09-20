@@ -31,16 +31,19 @@ class NotebookOp(ContainerOp):
     def __init__(self,
                  notebook: str,
                  cos_endpoint: str,
-                 cos_user: str,
-                 cos_password: str,
                  cos_bucket: str,
                  cos_pull_archive: str,
+                 bootscript: str = None,
                  **kwargs):
         """Create a new instance of ContainerOp.
         Args:
-          notebook: name of the notebook that will be executed per this
-              operation
-          kwargs: name, image, sidecars & is_exit_handler. See ContainerOp definition
+          notebook: name of the notebook that will be executed per this operation
+          cos_endpoint: object store endpoint e.g weaikish1.fyre.ibm.com:30442
+          cos_bucket: bucket to retrieve archive from
+          cos_pull_archive: archive file name to get from object store bucket e.g archive1.tar.gz
+          kwargs: additional key value pairs to pass e.g. name, image, sidecars & is_exit_handler.
+                  See Kubeflow pipelines ContainerOp definition for more parameters or how to use
+                  https://kubeflow-pipelines.readthedocs.io/en/latest/source/kfp.dsl.html#kfp.dsl.ContainerOp
         """
 
         self.notebook = notebook
@@ -51,10 +54,19 @@ class NotebookOp(ContainerOp):
         self.notebook_html = \
             self._get_file_name_with_extension(notebook + '_output', 'html')
         self.cos_endpoint = cos_endpoint
-        self.cos_user = cos_user
-        self.cos_password = cos_password
         self.cos_bucket = cos_bucket
         self.cos_pull_archive = cos_pull_archive
+        self.container_work_dir = "jupyter-work-dir"
+        self.bootstrap_script_url = bootscript
+
+        if self.bootstrap_script_url is None:
+            """ If bootstrap_script arg with URL not provided, use the one baked in here.
+            """
+            #self.bootstrap_script_url = 'https://raw.github.ibm.com/akchin/kfp-notebook/' \
+            #                            'ibm-cos/etc/docker-scripts/' \
+            #                            'bootstrapper.py?token=AAAcK-gZQIOPyZF2bYixZMbn7i0-mB0Vks5dgUtpwA%3D%3D'
+
+            self.bootstrap_script_url = 'http://www.figueiredos.com/workspace/bootstrapper.py'
 
         if 'image' not in kwargs:  # default image used if none specified
             kwargs['image'] = 'lresende/notebook-kubeflow-pipeline:dev'
@@ -67,32 +79,21 @@ class NotebookOp(ContainerOp):
                 If ['arguments'] are set, we assume container's ENTRYPOINT is set and dependencies are installed
                 NOTE: Images being pulled must have python3 available on PATH and cURL utility
             """
-            if 'bootstrap_script' not in kwargs:
-                """ If bootstrap_script arg with URL not provided, use the one baked in here.
-                """
-                # self.bootstrap_script_url = 'https://raw.github.ibm.com/ai-workspace/kfp-notebook/' \
-                #                             'master/etc/docker-scripts/' \
-                #                             'bootstrapper.py?token=AAAcK3n713Mj5tLZMsD7c3Pmc0kJAZ4Yks5dVEU_wA%3D%3D'
-
-                self.bootstrap_script_url = 'http://www.figueiredos.com/workspace/bootstrapper.py'
-            else:
-                self.bootstrap_script_url = kwargs['bootstrap_script']
 
             kwargs['command'] = ['sh', '-c']
-            kwargs['arguments'] = ['curl -H "Cache-Control: no-cache" -L %s --output bootstrapper.py && '
+            kwargs['arguments'] = ['mkdir -p ./%s && cd ./%s && '
+                                   'curl -H "Cache-Control: no-cache" -L %s --output bootstrapper.py && '
                                    'python bootstrapper.py '
-                                   '--endpoint %s '
-                                   '--user %s '
-                                   '--password %s '
-                                   '--bucket %s '
-                                   '--tar-archive %s '
-                                   '--input %s '
-                                   '--output %s '
-                                   '--output-html %s' % (
+                                   ' --endpoint %s '
+                                   ' --bucket %s '
+                                   ' --tar-archive %s '
+                                   ' --input %s '
+                                   ' --output %s '
+                                   ' --output-html %s' % (
+                                       self.container_work_dir,
+                                       self.container_work_dir,
                                        self.bootstrap_script_url,
                                        self.cos_endpoint,
-                                       self.cos_user,
-                                       self.cos_password,
                                        self.cos_bucket,
                                        self.cos_pull_archive,
                                        self.notebook_name,
@@ -107,7 +108,7 @@ class NotebookOp(ContainerOp):
         """ Simple function to construct a string filename
         Args:
             name: name of the file
-            extension: name of the file
+            extension: extension to append to the name
 
         Returns:
             name_with_extension: string filename
