@@ -74,7 +74,7 @@ and enter your IBM credentials to upload to a new release
 ```
 (py37) Alans-MacBook-Pro:kfp-notebook akchin@us.ibm.com$ twine upload -r local dist/* --verbose
 Uploading distributions to https://na.artifactory.swg-devops.com/artifactory/api/pypi/dbg-aiworkspace-team-pypi-local
-Uploading kfp_notebook-0.2.0.dev0-py3-none-any.whl
+Uploading kfp_notebook-<version>-py3-none-any.whl
 100%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 15.2k/15.2k [00:01<00:00, 11.0kB/s]
 ```
 
