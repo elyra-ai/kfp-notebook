@@ -99,6 +99,7 @@ if __name__ == '__main__':
     import_with_auto_install("argparse")
     import_with_auto_install("nbconvert")
     import_with_auto_install("nbformat")
+    import_with_auto_install("ipykernel")
 
     import minio
     import argparse
