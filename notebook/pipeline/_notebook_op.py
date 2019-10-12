@@ -33,6 +33,8 @@ class NotebookOp(ContainerOp):
                  cos_endpoint: str,
                  cos_bucket: str,
                  cos_pull_archive: str,
+                 pipeline_outputs: str,
+                 pipeline_inputs: str,
                  bootscript: str = None,
                  **kwargs):
         """Create a new instance of ContainerOp.
@@ -58,6 +60,8 @@ class NotebookOp(ContainerOp):
         self.cos_pull_archive = cos_pull_archive
         self.container_work_dir = "jupyter-work-dir"
         self.bootstrap_script_url = bootscript
+        self.pipeline_outputs = pipeline_outputs
+        self.pipeline_inputs = pipeline_inputs
 
         if self.bootstrap_script_url is None:
             """ If bootstrap_script arg with URL not provided, use the one baked in here.
@@ -66,7 +70,7 @@ class NotebookOp(ContainerOp):
             #                            'ibm-cos/etc/docker-scripts/' \
             #                            'bootstrapper.py?token=AAAcK-gZQIOPyZF2bYixZMbn7i0-mB0Vks5dgUtpwA%3D%3D'
 
-            self.bootstrap_script_url = 'http://www.figueiredos.com/workspace/bootstrapper.py'
+            self.bootstrap_script_url = 'http://yukked1.fyre.ibm.com/bootstrapper.py'
 
         if 'image' not in kwargs:  # default image used if none specified
             kwargs['image'] = 'lresende/notebook-kubeflow-pipeline:dev'
@@ -87,6 +91,8 @@ class NotebookOp(ContainerOp):
                                    ' --endpoint %s '
                                    ' --bucket %s '
                                    ' --tar-archive %s '
+                                   ' --pipeline-outputs %s '
+                                   ' --pipeline-inputs %s '
                                    ' --input %s '
                                    ' --output %s '
                                    ' --output-html %s' % (
@@ -96,6 +102,8 @@ class NotebookOp(ContainerOp):
                                        self.cos_endpoint,
                                        self.cos_bucket,
                                        self.cos_pull_archive,
+                                       self.pipeline_outputs,
+                                       self.pipeline_inputs,
                                        self.notebook_name,
                                        self.notebook_result,
                                        self.notebook_html
@@ -118,3 +126,4 @@ class NotebookOp(ContainerOp):
             name_with_extension = '{}.{}'.format(name, extension)
 
         return name_with_extension
+
