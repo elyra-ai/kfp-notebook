@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import re
 import subprocess
 import sys
 
@@ -33,6 +32,8 @@ def parse_arguments():
     parser.add_argument('-t', '--tar-archive', dest="tar-archive", help='Archive containing notebook and dependency artifacts', required=True)
     parser.add_argument('-i', '--input', dest="input", help='Notebook to execute', required=True)
     parser.add_argument('-o', '--output', dest="output", help='Executed Notebook ', required=True)
+    parser.add_argument('-p', '--pipeline-outputs', dest="pipeline-outputs", help='Files to output to object store', required=True)
+    parser.add_argument('-l', '--pipeline-inputs', dest="pipeline-inputs", help='Files to pull in from parent node', required=False)
     parser.add_argument('-m', '--output-html', dest="output-html", help='Executed notebook converted to HTML', required=True)
     args = vars(parser.parse_args())
 
@@ -83,6 +84,7 @@ def put_file_object_store(client, bucket_name, file_to_upload):
                 bucket_name: bucket to place the files into
                 file_to_upload: filename
             """
+    print('Uploading file {} to bucket {}'.format(file_to_upload, bucket_name))
 
     try:
         client.fput_object(bucket_name=bucket_name,
@@ -120,6 +122,12 @@ if __name__ == '__main__':
                              secure=False)
 
     get_file_object_store(cos_client, input_params['bucket'], input_params['tar-archive'])
+
+    input_list = input_params['pipeline-inputs'].split(",")
+    for file in input_list:
+        if file != 'None':
+            get_file_object_store(cos_client, input_params['bucket'], file)
+
     print("TAR Archive pulled from Object Storage.")
     print("Unpacking........")
     subprocess.call(['tar', '-zxvf', input_params["tar-archive"]])
@@ -137,4 +145,10 @@ if __name__ == '__main__':
     print("Uploading Results back to Object Storage")
     put_file_object_store(cos_client, input_params["bucket"], output_html_file)
     put_file_object_store(cos_client, input_params["bucket"], input_params['output'])
+
+    output_list = input_params['pipeline-outputs'].split(",")
+    for file in output_list:
+        if file != 'None':
+            put_file_object_store(cos_client, input_params['bucket'], file)
+
     print("Upload Complete.")
