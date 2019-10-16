@@ -138,7 +138,8 @@ if __name__ == '__main__':
 
     papermill.execute_notebook(
         input_params['input'],
-        input_params['output']
+        input_params['output'],
+        kernel_name="python3"
         # parameters=
     )
     output_html_file = notebook_to_html(input_params['output'], input_params['output-html'])
