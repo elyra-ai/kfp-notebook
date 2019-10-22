@@ -32,6 +32,7 @@ class NotebookOp(ContainerOp):
                  notebook: str,
                  cos_endpoint: str,
                  cos_bucket: str,
+                 cos_directory: str,
                  cos_pull_archive: str,
                  pipeline_outputs: str,
                  pipeline_inputs: str,
@@ -57,6 +58,7 @@ class NotebookOp(ContainerOp):
             self._get_file_name_with_extension(notebook + '_output', 'html')
         self.cos_endpoint = cos_endpoint
         self.cos_bucket = cos_bucket
+        self.cos_directory = cos_directory
         self.cos_pull_archive = cos_pull_archive
         self.container_work_dir = "jupyter-work-dir"
         self.bootstrap_script_url = bootscript
@@ -90,6 +92,7 @@ class NotebookOp(ContainerOp):
                                    'python bootstrapper.py '
                                    ' --endpoint %s '
                                    ' --bucket %s '
+                                   ' --directory %s '
                                    ' --tar-archive %s '
                                    ' --pipeline-outputs %s '
                                    ' --pipeline-inputs %s '
@@ -101,6 +104,7 @@ class NotebookOp(ContainerOp):
                                        self.bootstrap_script_url,
                                        self.cos_endpoint,
                                        self.cos_bucket,
+                                       self.cos_directory,
                                        self.cos_pull_archive,
                                        self.pipeline_outputs,
                                        self.pipeline_inputs,

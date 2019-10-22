@@ -29,6 +29,7 @@ def parse_arguments():
     parser = argparse.ArgumentParser(description='Description of your program')
     parser.add_argument('-e', '--endpoint', dest="endpoint", help='Cloud object storage endpoint', required=True)
     parser.add_argument('-b', '--bucket', dest="bucket", help='Cloud object storage bucket to use', required=True)
+    parser.add_argument('-d', '--directory', dest="directory", help='Directory in cloud object storage bucket to use', required=True)
     parser.add_argument('-t', '--tar-archive', dest="tar-archive", help='Archive containing notebook and dependency artifacts', required=True)
     parser.add_argument('-i', '--input', dest="input", help='Notebook to execute', required=True)
     parser.add_argument('-o', '--output', dest="output", help='Executed Notebook ', required=True)
@@ -59,7 +60,7 @@ def notebook_to_html(notebook_file, html_file):
     return html_file
 
 
-def get_file_object_store(client, bucket_name, file_to_get):
+def get_file_object_store(client, bucket_name, file_to_get, subdir):
     """ Abstracted function to get files from an object store
                 Args:
                     client: object store client
@@ -71,13 +72,13 @@ def get_file_object_store(client, bucket_name, file_to_get):
 
     try:
         client.fget_object(bucket_name=bucket_name,
-                           object_name=file_to_get,
+                           object_name=subdir+file_to_get,
                            file_path=file_to_get)
     except minio.error.ResponseError as err:
         print(err)
 
 
-def put_file_object_store(client, bucket_name, file_to_upload):
+def put_file_object_store(client, bucket_name, file_to_upload, subdir):
     """ Abstracted function to put files into an object store
             Args:
                 client: object store client
@@ -88,7 +89,7 @@ def put_file_object_store(client, bucket_name, file_to_upload):
 
     try:
         client.fput_object(bucket_name=bucket_name,
-                           object_name=file_to_upload,
+                           object_name=subdir+file_to_upload,
                            file_path=file_to_upload)
     except minio.error.ResponseError as err:
         print(err)
@@ -121,12 +122,14 @@ if __name__ == '__main__':
                              secret_key=os.getenv('AWS_SECRET_ACCESS_KEY'),
                              secure=False)
 
-    get_file_object_store(cos_client, input_params['bucket'], input_params['tar-archive'])
+    cos_dir_pre = input_params['directory'] + '/'
+
+    get_file_object_store(cos_client, input_params['bucket'], input_params['tar-archive'], cos_dir_pre)
 
     input_list = input_params['pipeline-inputs'].split(",")
     for file in input_list:
         if file != 'None':
-            get_file_object_store(cos_client, input_params['bucket'], file)
+            get_file_object_store(cos_client, input_params['bucket'], file, cos_dir_pre)
 
     print("TAR Archive pulled from Object Storage.")
     print("Unpacking........")
@@ -144,12 +147,12 @@ if __name__ == '__main__':
     )
     output_html_file = notebook_to_html(input_params['output'], input_params['output-html'])
     print("Uploading Results back to Object Storage")
-    put_file_object_store(cos_client, input_params["bucket"], output_html_file)
-    put_file_object_store(cos_client, input_params["bucket"], input_params['output'])
+    put_file_object_store(cos_client, input_params["bucket"], output_html_file, cos_dir_pre)
+    put_file_object_store(cos_client, input_params["bucket"], input_params['output'], cos_dir_pre)
 
     output_list = input_params['pipeline-outputs'].split(",")
     for file in output_list:
         if file != 'None':
-            put_file_object_store(cos_client, input_params['bucket'], file)
+            put_file_object_store(cos_client, input_params['bucket'], file, cos_dir_pre)
 
     print("Upload Complete.")
