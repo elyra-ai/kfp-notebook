@@ -43,6 +43,8 @@ class NotebookOp(ContainerOp):
           cos_endpoint: object store endpoint e.g weaikish1.fyre.ibm.com:30442
           cos_bucket: bucket to retrieve archive from
           cos_pull_archive: archive file name to get from object store bucket e.g archive1.tar.gz
+          pipeline_outputs: comma delimited list of files produced by the notebook
+          pipeline_inputs: comma delimited list of files to be consumed/are required by the notebook
           kwargs: additional key value pairs to pass e.g. name, image, sidecars & is_exit_handler.
                   See Kubeflow pipelines ContainerOp definition for more parameters or how to use
                   https://kubeflow-pipelines.readthedocs.io/en/latest/source/kfp.dsl.html#kfp.dsl.ContainerOp
@@ -66,11 +68,8 @@ class NotebookOp(ContainerOp):
         if self.bootstrap_script_url is None:
             """ If bootstrap_script arg with URL not provided, use the one baked in here.
             """
-            #self.bootstrap_script_url = 'https://raw.github.ibm.com/akchin/kfp-notebook/' \
-            #                            'ibm-cos/etc/docker-scripts/' \
-            #                            'bootstrapper.py?token=AAAcK-gZQIOPyZF2bYixZMbn7i0-mB0Vks5dgUtpwA%3D%3D'
-
-            self.bootstrap_script_url = 'http://yukked1.fyre.ibm.com/bootstrapper.py'
+            self.bootstrap_script_url = 'https://raw.githubusercontent.com/ai-workspace/' \
+                                        'kfp-notebook/v0.3.0/etc/docker-scripts/bootstrapper.py'
 
         if 'image' not in kwargs:  # default image used if none specified
             kwargs['image'] = 'lresende/notebook-kubeflow-pipeline:dev'
