@@ -39,7 +39,7 @@ setup_requirements = [ ]
 test_requirements = [ ]
 
 setup(
-    author="IBM - CODAIT",
+    author="AI Workspace Contributors",
     classifiers=[
         'Development Status :: 4 - Beta',
         'Intended Audience :: Developers',
@@ -63,7 +63,7 @@ setup(
     setup_requires=setup_requirements,
     test_suite='tests',
     tests_require=test_requirements,
-    url='https://github.ibm.com/ai-workspace/kfp-notebook',
+    url='https://github.com/ai-workspace/kfp-notebook',
     version='0.4.0.dev0',
     zip_safe=False,
 )
