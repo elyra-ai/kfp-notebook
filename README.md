@@ -1,6 +1,6 @@
 <!--
 {% comment %}
-Copyright 2018-2019 IBM Corporation
+Copyright 2018-2020 IBM Corporation
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@ limitations under the License.
 -->
 
 KFP-Notebook is an Notebook op to enable running notebooks as part of a Kubeflow Pipeline.
- 
+
 
 ## Building kfp-notebook
 
@@ -45,7 +45,7 @@ notebook_location = kfp.dsl.ArtifactLocation.s3(
         access_key_secret=V1SecretKeySelector(name="mlpipeline-minio-artifact", key="accesskey"),
         secret_key_secret=V1SecretKeySelector(name="mlpipeline-minio-artifact", key="secretkey"))
 
-def run_notebook_op(op_name, notebook_path):    
+def run_notebook_op(op_name, notebook_path):
     op= NotebookOp(
         name=op_name,
         notebook=notebook_path,
@@ -56,14 +56,14 @@ def run_notebook_op(op_name, notebook_path):
         artifact_location=notebook_location,
     )
     op.container.set_image_pull_policy('Always')
-    
+
     return op
-    
+
 def demo_pipeline():
     stats_op = run_notebook_op('stats', 'generate-community-overview')
     contributions_op = run_notebook_op('contributions', 'generate-community-contributions')
     run_notebook_op('overview', 'overview').after(stats_op, contributions_op)
-    
+
 # Compile the new pipeline
 kfp.compiler.Compiler().compile(demo_pipeline,'pipelines/oscon_pipeline.tar.gz')
 
