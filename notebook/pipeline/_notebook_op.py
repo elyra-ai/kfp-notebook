@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2018-2019 IBM Corporation
+# Copyright 2018-2020 IBM Corporation
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@ from kfp.dsl._container_op import BaseOp, ContainerOp
 
 
 """
-The NotebookOp uses a python script to bootstrap the user supplied image with the required dependencies. 
+The NotebookOp uses a python script to bootstrap the user supplied image with the required dependencies.
 In order for the script run properly, the image used, must at a minimum, have the 'curl' utility available
 and have python3
 """
