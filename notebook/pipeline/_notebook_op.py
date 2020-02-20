@@ -20,7 +20,7 @@ from kfp.dsl._container_op import BaseOp, ContainerOp
 
 
 """
-The NotebookOp uses a python script to bootstrap the user supplied image with the required dependencies. 
+The NotebookOp uses a python script to bootstrap the user supplied image with the required dependencies.
 In order for the script run properly, the image used, must at a minimum, have the 'curl' utility available
 and have python3
 """
@@ -75,7 +75,7 @@ class NotebookOp(ContainerOp):
             self.bootstrap_script_url = 'http://yukked1.fyre.ibm.com/bootstrapper.py'
 
         if 'image' not in kwargs:  # default image used if none specified
-            kwargs['image'] = 'lresende/notebook-kubeflow-pipeline:dev'
+            kwargs['image'] = 'tensorflow/tensorflow:1.12.3-py'
 
         if notebook is None:
             ValueError("You need to provide a notebook.")
