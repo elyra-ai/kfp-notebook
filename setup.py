@@ -39,15 +39,14 @@ setup_requirements = [ ]
 test_requirements = [ ]
 
 setup(
-    author="Elyra Contributors",
     classifiers=[
         'Development Status :: 4 - Beta',
         'Intended Audience :: Developers',
         'License :: OSI Approved :: Apache Software License',
         'Natural Language :: English',
-        'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3.8',
     ],
     description="Jupyter Notebook operator for Kubeflow Pipeline.",
     long_description=readme,
