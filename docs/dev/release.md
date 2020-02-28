@@ -25,6 +25,8 @@ some updates during the release steps.
 
 ```bash
 bump2version release
+sed -i'.bak' -e 's/master/0.5.0/g' notebook/pipeline/_notebook_op.py
+rm notebook/pipeline/_notebook_op.py.bak
 git commit -a -m"KFP Notebook release 0.5.0"
 git tag v0.5.0
 ```
