@@ -29,6 +29,8 @@ git commit -a -m"KFP Notebook release 0.5.0"
 git tag v0.5.0
 ```
 
+Note: Use `bump2version suffix` when releasing from a `dev` suffixed version.
+
 * Build the release artifacts
 
 ```bash
