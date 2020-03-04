@@ -71,11 +71,7 @@ class NotebookOp(ContainerOp):
         if self.bootstrap_script_url is None:
             """ If bootstrap_script arg with URL not provided, use the one baked in here.
             """
-            #self.bootstrap_script_url = 'https://raw.github.ibm.com/akchin/kfp-notebook/' \
-            #                            'ibm-cos/etc/docker-scripts/' \
-            #                            'bootstrapper.py?token=AAAcK-gZQIOPyZF2bYixZMbn7i0-mB0Vks5dgUtpwA%3D%3D'
-
-            self.bootstrap_script_url = 'http://yukked1.fyre.ibm.com/bootstrapper.py'
+            self.bootstrap_script_url = 'http://www.figueiredos.com/elyra/bootstrapper.py'
 
         if 'image' not in kwargs:  # default image used if none specified
             kwargs['image'] = 'tensorflow/tensorflow:1.12.3-py'
