@@ -32,30 +32,42 @@ The example below can easily be added to a `python script` or `jupyter notebook`
 ```python
 import os
 import kfp
-from notebook.pipeline._notebook_op import NotebookOp
-from kubernetes.client.models import V1EnvVar, V1SecretKeySelector
+from notebook.pipeline import NotebookOp
+from kubernetes.client.models import V1EnvVar
 
-url = 'http://weakish1.fyre.ibm.com:32488/pipeline'
+# KubeFlow Pipelines API Endpoint
+kfp_url = 'http://dataplatform.ibm.com:32488/pipeline'
 
-# configures artifact location
-notebook_location = kfp.dsl.ArtifactLocation.s3(
-        bucket="oscon",
-        endpoint="weakish1.fyre.ibm.com:30427",
-        insecure=True,
-        access_key_secret=V1SecretKeySelector(name="mlpipeline-minio-artifact", key="accesskey"),
-        secret_key_secret=V1SecretKeySelector(name="mlpipeline-minio-artifact", key="secretkey"))
+# S3 Object Storage
+cos_endpoint = 'http://s3.us-south.cloud-object-storage.appdomain.cloud'
+cos_bucket = 'test-bucket'
+cos_username = 'test'
+cos_password = 'test123'
+cos_directory = 'test-directory' 
+cos_pull_archive = 'test-archive.tar.gz'
+
+# Inputs and Outputs
+inputs = []
+outputs = []
+
+# Container Image
+image = 'tensorflow/tensorflow:latest'
 
 def run_notebook_op(op_name, notebook_path):
-    op= NotebookOp(
-        name=op_name,
-        notebook=notebook_path,
-        cos_endpoint='http://weakish1.fyre.ibm.com:30427',
-        cos_user='minio',
-        cos_password='minio123',
-        image='lresende/notebook-kubeflow-pipeline:dev',
-        artifact_location=notebook_location,
-    )
-    op.container.set_image_pull_policy('Always')
+    
+    notebook_op = NotebookOp(name=op_name,
+                             notebook=op_name,
+                             cos_endpoint=cos_endpoint,
+                             cos_bucket=bucket_name,
+                             cos_directory=cos_directory,
+                             cos_pull_archive=cos_pull_archive,
+                             pipeline_outputs=outputs,
+                             pipeline_inputs=inputs,
+                             image=image)
+
+    notebook_op.container.add_env_variable(V1EnvVar(name='AWS_ACCESS_KEY_ID', value=cos_username))
+    notebook_op.container.add_env_variable(V1EnvVar(name='AWS_SECRET_ACCESS_KEY', value=cos_password))
+    notebook_op.container.set_image_pull_policy('Always')
 
     return op
 
@@ -65,13 +77,17 @@ def demo_pipeline():
     run_notebook_op('overview', 'overview').after(stats_op, contributions_op)
 
 # Compile the new pipeline
-kfp.compiler.Compiler().compile(demo_pipeline,'pipelines/oscon_pipeline.tar.gz')
+kfp.compiler.Compiler().compile(demo_pipeline,'pipelines/pipeline.tar.gz')
 
 # Upload the compiled pipeline
-client = kfp.Client(host=url)
-client.upload_pipeline('pipelines/oscon_pipeline.tar.gz',pipeline_name='oscon-pipeline')
-#experiment = client.create_experiment(name='oscon-community-stats')
-#run = client.run_pipeline(experiment.id, 'oscon-community-stats', 'pipelines/community_pipeline.tar.gz')
+client = kfp.Client(host=kfp_url)
+pipeline_info = client.upload_pipeline('pipelines/pipeline.tar.gz',pipeline_name='pipeline-demo')
+
+# Create a new experiment
+experiment = client.create_experiment(name='demo-experiment')
+
+# Create a new run associated with experiment and our uploaded pipeline
+run = client.run_pipeline(experiment.id, 'demo-run', pipeline_id=pipeline_info.id)
 
 ```
 
