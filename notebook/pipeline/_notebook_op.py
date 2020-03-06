@@ -91,13 +91,13 @@ class NotebookOp(ContainerOp):
                                    'python bootstrapper.py '
                                    ' --endpoint %s '
                                    ' --bucket %s '
-                                   ' --directory %s '
-                                   ' --tar-archive %s '
+                                   ' --directory "%s" '
+                                   ' --tar-archive "%s" '
                                    ' --pipeline-outputs %s '
                                    ' --pipeline-inputs %s '
-                                   ' --input %s '
-                                   ' --output %s '
-                                   ' --output-html %s' % (
+                                   ' --input "%s" '
+                                   ' --output "%s" '
+                                   ' --output-html "%s"' % (
                                        self.container_work_dir,
                                        self.container_work_dir,
                                        self.bootstrap_script_url,
