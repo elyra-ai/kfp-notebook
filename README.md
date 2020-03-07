@@ -93,4 +93,4 @@ run = client.run_pipeline(experiment.id, 'demo-run', pipeline_id=pipeline_info.i
 
 ## Generated Kubeflow Pipelines
 
-![Kubeflow Pipeline Example](docs/source/images/kfp-pipeline-example.png)
+![Kubeflow Pipeline Example](docs/source/images/screenshot_kfp.png)
