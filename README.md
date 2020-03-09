@@ -58,7 +58,7 @@ def run_notebook_op(op_name, notebook_path):
     notebook_op = NotebookOp(name=op_name,
                              notebook=op_name,
                              cos_endpoint=cos_endpoint,
-                             cos_bucket=bucket_name,
+                             cos_bucket=cos_bucket,
                              cos_directory=cos_directory,
                              cos_pull_archive=cos_pull_archive,
                              pipeline_outputs=outputs,
@@ -93,4 +93,4 @@ run = client.run_pipeline(experiment.id, 'demo-run', pipeline_id=pipeline_info.i
 
 ## Generated Kubeflow Pipelines
 
-![Kubeflow Pipeline Example](docs/source/images/screenshot_kfp.png)
+![Kubeflow Pipeline Example](docs/source/images/kfp-pipeline-example.png)
