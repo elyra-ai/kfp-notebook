@@ -16,7 +16,7 @@ limitations under the License.
 {% endcomment %}
 -->
 
-KFP-Notebook is an Notebook op to enable running notebooks as part of a Kubeflow Pipeline.
+KFP-Notebook is an operator that enable running notebooks as part of a Kubeflow Pipeline.
 
 
 ## Building kfp-notebook
