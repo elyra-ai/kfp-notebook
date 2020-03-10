@@ -25,7 +25,7 @@ some updates during the release steps.
 
 ```bash
 bump2version release
-sed -i'.bak' -e 's/master/0.5.0/g' notebook/pipeline/_notebook_op.py
+sed -i'.bak' -e 's/master/v0.5.0/g' notebook/pipeline/_notebook_op.py
 rm notebook/pipeline/_notebook_op.py.bak
 git commit -a -m"KFP Notebook release 0.5.0"
 git tag v0.5.0
@@ -37,14 +37,13 @@ Note: Use `bump2version suffix` when releasing from a `dev` suffixed version.
 
 ```bash
 make clean dist
-twine upload --sign --repository ibm dist/*
+twine upload --sign dist/*
 ```
-
-Note: the repository **ibm** should be a valid section in the config file (~/.pypirc)
 
 * Preparing to the next development iteration
 
 ```bash
 bump2version minor
+sed -i'.bak' -e 's/v0.5.0/master/g' notebook/pipeline/_notebook_op.py
 git commit -a -m"Prepare for next development iteration"
 ```
