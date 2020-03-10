@@ -73,7 +73,7 @@ class NotebookOp(ContainerOp):
             """
 
             self.bootstrap_script_url = 'https://raw.githubusercontent.com/elyra-ai/' \
-                                        'kfp-notebook/v0.7.0/etc/docker-scripts/bootstrapper.py'
+                                        'kfp-notebook/master/etc/docker-scripts/bootstrapper.py'
 
         if 'image' not in kwargs:  # default image used if none specified
             kwargs['image'] = 'tensorflow/tensorflow:1.12.3-py'
