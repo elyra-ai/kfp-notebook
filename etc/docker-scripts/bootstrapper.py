@@ -21,6 +21,7 @@ def import_with_auto_install(package):
     try:
         return __import__(package)
     except ImportError:
+        print('Updating package {}'.format(package))
         subprocess.check_call([sys.executable, '-m', 'pip', 'install', '--upgrade', package])
 
 
@@ -97,6 +98,7 @@ def put_file_object_store(client, bucket_name, file_to_upload, subdir):
 
 
 if __name__ == '__main__':
+    import_with_auto_install("jupyter_client")
     import_with_auto_install("papermill")
     import_with_auto_install("minio")
     import_with_auto_install("argparse")
