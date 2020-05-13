@@ -159,6 +159,7 @@ if __name__ == '__main__':
             if file != 'None':
                 put_file_object_store(cos_client, input_params['bucket'], file, cos_dir_pre)
     except:
+        # on error - upload the failed notebook with `error` suffix for troubleshooting purposes
         output_error_html = input_params['output-html'].replace('.html', '-error.html')
         output_html_file = notebook_to_html(input_params['output'], output_error_html)
 
