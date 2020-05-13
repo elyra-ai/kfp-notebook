@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+import shutil
 import subprocess
 import sys
 
@@ -141,20 +142,35 @@ if __name__ == '__main__':
           .format(str(input_params['input']),
                   str(input_params['output'])))
 
-    papermill.execute_notebook(
-        input_params['input'],
-        input_params['output'],
-        kernel_name="python3"
-        # parameters=
-    )
-    output_html_file = notebook_to_html(input_params['output'], input_params['output-html'])
-    print("Uploading Results back to Object Storage")
-    put_file_object_store(cos_client, input_params["bucket"], output_html_file, cos_dir_pre)
-    put_file_object_store(cos_client, input_params["bucket"], input_params['output'], cos_dir_pre)
+    try:
+        papermill.execute_notebook(
+            input_params['input'],
+            input_params['output'],
+            kernel_name="python3"
+            # parameters=
+        )
+        output_html_file = notebook_to_html(input_params['output'], input_params['output-html'])
+        print("Uploading Results back to Object Storage")
+        put_file_object_store(cos_client, input_params["bucket"], output_html_file, cos_dir_pre)
+        put_file_object_store(cos_client, input_params["bucket"], input_params['output'], cos_dir_pre)
 
-    output_list = input_params['pipeline-outputs'].split(",")
-    for file in output_list:
-        if file != 'None':
-            put_file_object_store(cos_client, input_params['bucket'], file, cos_dir_pre)
+        output_list = input_params['pipeline-outputs'].split(",")
+        for file in output_list:
+            if file != 'None':
+                put_file_object_store(cos_client, input_params['bucket'], file, cos_dir_pre)
+    except:
+        output_error_html = input_params['output-html'].replace('.html', '-error.html')
+        output_html_file = notebook_to_html(input_params['output'], output_error_html)
+
+        output_error_ipynb = input_params['output'].replace('.ipynb', '-error.ipynb')
+        shutil.copy(input_params['input'], output_error_ipynb)
+
+        print("Uploading Errored Notebook back to Object Storage")
+        put_file_object_store(cos_client, input_params["bucket"], output_error_html, cos_dir_pre)
+        put_file_object_store(cos_client, input_params["bucket"], output_error_ipynb, cos_dir_pre)
+
+        print("Unexpected error:", sys.exc_info()[0])
+
+        raise
 
     print("Upload Complete.")
