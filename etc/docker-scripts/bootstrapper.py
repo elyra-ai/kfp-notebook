@@ -129,10 +129,13 @@ if __name__ == '__main__':
 
     get_file_object_store(cos_client, input_params['bucket'], input_params['tar-archive'], cos_dir_pre)
 
-    input_list = input_params['pipeline-inputs'].split(",")
-    for file in input_list:
-        if file != 'None':
-            get_file_object_store(cos_client, input_params['bucket'], file, cos_dir_pre)
+    print('Processing dependencies........')
+    if 'pipeline-inputs' in input_params.keys():
+        input_list = input_params['pipeline-inputs'].split(",")
+        if input_list and len(input_list) > 0:
+            for file in input_list:
+                if file and file != 'None':
+                    get_file_object_store(cos_client, input_params['bucket'], file, cos_dir_pre)
 
     print("TAR Archive pulled from Object Storage.")
     print("Unpacking........")
@@ -154,12 +157,17 @@ if __name__ == '__main__':
         put_file_object_store(cos_client, input_params["bucket"], output_html_file, cos_dir_pre)
         put_file_object_store(cos_client, input_params["bucket"], input_params['output'], cos_dir_pre)
 
-        output_list = input_params['pipeline-outputs'].split(",")
-        for file in output_list:
-            if file != 'None':
-                put_file_object_store(cos_client, input_params['bucket'], file, cos_dir_pre)
+        print('Processing outputs........')
+        if 'pipeline-outputs' in input_params.keys():
+            output_list = input_params['pipeline-outputs'].split(",")
+            if output_list and len(output_list) > 0:
+                for file in output_list:
+                    if file and file != 'None':
+                        put_file_object_store(cos_client, input_params['bucket'], file, cos_dir_pre)
     except:
         # on error - upload the failed notebook with `error` suffix for troubleshooting purposes
+        print("Unexpected error:", sys.exc_info()[0])
+        print("Processing Errored Notebook")
         output_error_html = input_params['output-html'].replace('.html', '-error.html')
         output_html_file = notebook_to_html(input_params['output'], output_error_html)
 
@@ -169,8 +177,6 @@ if __name__ == '__main__':
         print("Uploading Errored Notebook back to Object Storage")
         put_file_object_store(cos_client, input_params["bucket"], output_error_html, cos_dir_pre)
         put_file_object_store(cos_client, input_params["bucket"], output_error_ipynb, cos_dir_pre)
-
-        print("Unexpected error:", sys.exc_info()[0])
 
         raise
 
