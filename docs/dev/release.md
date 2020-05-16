@@ -45,5 +45,6 @@ twine upload --sign dist/*
 ```bash
 bump2version minor
 sed -i'.bak' -e 's/v0.5.0/master/g' notebook/pipeline/_notebook_op.py
+rm notebook/pipeline/_notebook_op.py.bak
 git commit -a -m"Prepare for next development iteration"
 ```
