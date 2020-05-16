@@ -41,10 +41,10 @@ class NotebookOp(ContainerOp):
         """Create a new instance of ContainerOp.
         Args:
           notebook: name of the notebook that will be executed per this operation
-          cos_endpoint: object store endpoint e.g weaikish1.fyre.ibm.com:30442
+          cos_endpoint: object storage endpoint e.g weaikish1.fyre.ibm.com:30442
           cos_bucket: bucket to retrieve archive from
-          cos_directory: name of the directory in the object store bucket to pull
-          cos_pull_archive: archive file name to get from object store bucket e.g archive1.tar.gz
+          cos_directory: name of the directory in the object storage bucket to pull
+          cos_pull_archive: archive file name to get from object storage bucket e.g archive1.tar.gz
           pipeline_outputs: comma delimited list of files produced by the notebook
           pipeline_inputs: comma delimited list of files to be consumed/are required by the notebook
           kwargs: additional key value pairs to pass e.g. name, image, sidecars & is_exit_handler.

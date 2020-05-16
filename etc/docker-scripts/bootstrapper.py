@@ -35,7 +35,7 @@ def parse_arguments():
     parser.add_argument('-t', '--tar-archive', dest="tar-archive", help='Archive containing notebook and dependency artifacts', required=True)
     parser.add_argument('-i', '--input', dest="input", help='Notebook to execute', required=True)
     parser.add_argument('-o', '--output', dest="output", help='Executed Notebook ', required=True)
-    parser.add_argument('-p', '--pipeline-outputs', dest="pipeline-outputs", help='Files to output to object store', required=True)
+    parser.add_argument('-p', '--pipeline-outputs', dest="pipeline-outputs", help='Files to output to object storage', required=True)
     parser.add_argument('-l', '--pipeline-inputs', dest="pipeline-inputs", help='Files to pull in from parent node', required=False)
     parser.add_argument('-m', '--output-html', dest="output-html", help='Executed notebook converted to HTML', required=True)
     args = vars(parser.parse_args())
@@ -46,7 +46,7 @@ def parse_arguments():
 def notebook_to_html(notebook_file, html_file):
     """ Function to convert a Jupyter notebook file (.ipynb) into an html file
                 Args:
-                    notebook_file: object store client
+                    notebook_file: object storage client
                     html_file: name of what the html output file should be
 
                 Returns:
@@ -63,9 +63,9 @@ def notebook_to_html(notebook_file, html_file):
 
 
 def get_file_object_store(client, bucket_name, file_to_get, subdir):
-    """ Abstracted function to get files from an object store
+    """ Abstracted function to get files from an object storage
                 Args:
-                    client: object store client
+                    client: object storage client
                     bucket_name: bucket to place the files into
                     file_to_get: filename
                 """
@@ -81,9 +81,9 @@ def get_file_object_store(client, bucket_name, file_to_get, subdir):
 
 
 def put_file_object_store(client, bucket_name, file_to_upload, subdir):
-    """ Abstracted function to put files into an object store
+    """ Abstracted function to put files into an object storage
             Args:
-                client: object store client
+                client: object storage client
                 bucket_name: bucket to place the files into
                 file_to_upload: filename
             """
