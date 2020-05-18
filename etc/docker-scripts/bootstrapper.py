@@ -62,36 +62,49 @@ def notebook_to_html(notebook_file, html_file):
     return html_file
 
 
-def get_file_object_store(client, bucket_name, file_to_get, subdir):
+def get_object_storage_filename(filename):
+    return os.path.join(input_params['directory'], filename)
+
+
+def get_file_from_object_storage(client, bucket_name, file_to_get):
     """ Abstracted function to get files from an object storage
                 Args:
                     client: object storage client
-                    bucket_name: bucket to place the files into
+                    bucket_name: bucket where files are located
                     file_to_get: filename
                 """
 
     print('Get file {} from bucket {}'.format(file_to_get, bucket_name))
+    object_to_get = get_object_storage_filename(file_to_get)
 
     try:
         client.fget_object(bucket_name=bucket_name,
-                           object_name=subdir+file_to_get,
+                           object_name=object_to_get,
                            file_path=file_to_get)
     except minio.error.ResponseError as err:
         print(err)
 
 
-def put_file_object_store(client, bucket_name, file_to_upload, subdir):
+def put_file_to_object_storage(client, bucket_name, file_to_upload, object_name=None):
     """ Abstracted function to put files into an object storage
             Args:
                 client: object storage client
-                bucket_name: bucket to place the files into
+                bucket_name: bucket where files are located
                 file_to_upload: filename
+                object_name: remote filename (used to rename)
             """
-    print('Uploading file {} to bucket {}'.format(file_to_upload, bucket_name))
+
+    object_to_upload = object_name
+    if not object_to_upload:
+        object_to_upload = file_to_upload
+
+    print('Uploading file {} as {} to bucket {}'.format(file_to_upload, object_to_upload, bucket_name))
+
+    object_to_upload = get_object_storage_filename(object_to_upload)
 
     try:
         client.fput_object(bucket_name=bucket_name,
-                           object_name=subdir+file_to_upload,
+                           object_name=object_to_upload,
                            file_path=file_to_upload)
     except minio.error.ResponseError as err:
         print(err)
@@ -107,12 +120,13 @@ if __name__ == '__main__':
     import_with_auto_install("nbformat")
     import_with_auto_install("ipykernel")
 
+    import os
     import minio
     import argparse
     import papermill
     import nbconvert
     import nbformat
-    import os
+
     from urllib.parse import urlparse
 
     print("Imports Complete.....")
@@ -125,9 +139,7 @@ if __name__ == '__main__':
                              secret_key=os.getenv('AWS_SECRET_ACCESS_KEY'),
                              secure=False)
 
-    cos_dir_pre = input_params['directory'] + '/'
-
-    get_file_object_store(cos_client, input_params['bucket'], input_params['tar-archive'], cos_dir_pre)
+    get_file_from_object_storage(cos_client, input_params['bucket'], input_params['tar-archive'])
 
     print('Processing dependencies........')
     if 'pipeline-inputs' in input_params.keys():
@@ -135,7 +147,7 @@ if __name__ == '__main__':
         if input_list and len(input_list) > 0:
             for file in input_list:
                 if file and file != 'None':
-                    get_file_object_store(cos_client, input_params['bucket'], file, cos_dir_pre)
+                    get_file_from_object_storage(cos_client, input_params['bucket'], file)
 
     print("TAR Archive pulled from Object Storage.")
     print("Unpacking........")
@@ -154,8 +166,8 @@ if __name__ == '__main__':
         )
         output_html_file = notebook_to_html(input_params['output'], input_params['output-html'])
         print("Uploading Results back to Object Storage")
-        put_file_object_store(cos_client, input_params["bucket"], output_html_file, cos_dir_pre)
-        put_file_object_store(cos_client, input_params["bucket"], input_params['output'], cos_dir_pre)
+        put_file_to_object_storage(cos_client, input_params["bucket"], output_html_file)
+        put_file_to_object_storage(cos_client, input_params["bucket"], input_params['output'])
 
         print('Processing outputs........')
         if 'pipeline-outputs' in input_params.keys():
@@ -163,7 +175,7 @@ if __name__ == '__main__':
             if output_list and len(output_list) > 0:
                 for file in output_list:
                     if file and file != 'None':
-                        put_file_object_store(cos_client, input_params['bucket'], file, cos_dir_pre)
+                        put_file_to_object_storage(cos_client, input_params['bucket'], file)
     except:
         # on error - upload the failed notebook with `error` suffix for troubleshooting purposes
         print("Unexpected error:", sys.exc_info()[0])
@@ -175,8 +187,8 @@ if __name__ == '__main__':
         shutil.copy(input_params['input'], output_error_ipynb)
 
         print("Uploading Errored Notebook back to Object Storage")
-        put_file_object_store(cos_client, input_params["bucket"], output_error_html, cos_dir_pre)
-        put_file_object_store(cos_client, input_params["bucket"], output_error_ipynb, cos_dir_pre)
+        put_file_to_object_storage(cos_client, input_params["bucket"], output_error_html)
+        put_file_to_object_storage(cos_client, input_params["bucket"], output_error_ipynb)
 
         raise
 
