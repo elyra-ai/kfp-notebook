@@ -29,21 +29,19 @@ def import_with_auto_install(package):
 def parse_arguments():
     print("Parsing Arguments.....")
     parser = argparse.ArgumentParser(description='Description of your program')
+    parser.add_argument('-i', '--notebook', dest="notebook", help='Notebook to execute', required=True)
     parser.add_argument('-e', '--endpoint', dest="endpoint", help='Cloud object storage endpoint', required=True)
     parser.add_argument('-b', '--bucket', dest="bucket", help='Cloud object storage bucket to use', required=True)
     parser.add_argument('-d', '--directory', dest="directory", help='Directory in cloud object storage bucket to use', required=True)
     parser.add_argument('-t', '--tar-archive', dest="tar-archive", help='Archive containing notebook and dependency artifacts', required=True)
-    parser.add_argument('-i', '--input', dest="input", help='Notebook to execute', required=True)
-    parser.add_argument('-o', '--output', dest="output", help='Executed Notebook ', required=True)
     parser.add_argument('-p', '--pipeline-outputs', dest="pipeline-outputs", help='Files to output to object storage', required=True)
     parser.add_argument('-l', '--pipeline-inputs', dest="pipeline-inputs", help='Files to pull in from parent node', required=False)
-    parser.add_argument('-m', '--output-html', dest="output-html", help='Executed notebook converted to HTML', required=True)
     args = vars(parser.parse_args())
 
     return args
 
 
-def notebook_to_html(notebook_file, html_file):
+def convert_notebook_to_html(notebook_file, html_file):
     """ Function to convert a Jupyter notebook file (.ipynb) into an html file
                 Args:
                     notebook_file: object storage client
@@ -153,21 +151,29 @@ if __name__ == '__main__':
     print("Unpacking........")
     subprocess.call(['tar', '-zxvf', input_params["tar-archive"]])
     print("Unpacking Complete.")
+
+    # Execute notebook
+    notebook = str(input_params['notebook'])
+    notebook_name = notebook.replace('.ipynb', '')
+    notebook_output = notebook_name + '-output.ipynb'
+    notebook_html = notebook_name + '.html'
+
     print("Executing notebook through Papermill: {} ==> {}"
-          .format(str(input_params['input']),
-                  str(input_params['output'])))
+          .format(notebook, notebook_output))
 
     try:
         papermill.execute_notebook(
-            input_params['input'],
-            input_params['output'],
+            notebook,
+            notebook_output,
             kernel_name="python3"
             # parameters=
         )
-        output_html_file = notebook_to_html(input_params['output'], input_params['output-html'])
-        print("Uploading Results back to Object Storage")
-        put_file_to_object_storage(cos_client, input_params["bucket"], output_html_file)
-        put_file_to_object_storage(cos_client, input_params["bucket"], input_params['output'])
+
+        convert_notebook_to_html(notebook_output, notebook_html)
+        print("Uploading Result Notebook back to Object Storage")
+        put_file_to_object_storage(cos_client, input_params['bucket'], notebook_output, notebook)
+        put_file_to_object_storage(cos_client, input_params['bucket'], notebook_html)
+
 
         print('Processing outputs........')
         if 'pipeline-outputs' in input_params.keys():
@@ -177,18 +183,13 @@ if __name__ == '__main__':
                     if file and file != 'None':
                         put_file_to_object_storage(cos_client, input_params['bucket'], file)
     except:
-        # on error - upload the failed notebook with `error` suffix for troubleshooting purposes
+        # log in case of errors
         print("Unexpected error:", sys.exc_info()[0])
-        print("Processing Errored Notebook")
-        output_error_html = input_params['output-html'].replace('.html', '-error.html')
-        output_html_file = notebook_to_html(input_params['output'], output_error_html)
-
-        output_error_ipynb = input_params['output'].replace('.ipynb', '-error.ipynb')
-        shutil.copy(input_params['input'], output_error_ipynb)
+        convert_notebook_to_html(notebook_output, notebook_html)
 
         print("Uploading Errored Notebook back to Object Storage")
-        put_file_to_object_storage(cos_client, input_params["bucket"], output_error_html)
-        put_file_to_object_storage(cos_client, input_params["bucket"], output_error_ipynb)
+        put_file_to_object_storage(cos_client, input_params['bucket'], notebook_output, notebook)
+        put_file_to_object_storage(cos_client, input_params['bucket'], notebook_html)
 
         raise
 

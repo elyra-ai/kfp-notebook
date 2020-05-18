@@ -53,12 +53,7 @@ class NotebookOp(ContainerOp):
         """
 
         self.notebook = notebook
-        self.notebook_name = \
-            self._get_file_name_with_extension(notebook, 'ipynb')
-        self.notebook_result = \
-            self._get_file_name_with_extension(notebook + '_output', 'ipynb')
-        self.notebook_html = \
-            self._get_file_name_with_extension(notebook + '_output', 'html')
+        self.notebook_name = self._get_file_name_with_extension(notebook, 'ipynb')
         self.cos_endpoint = cos_endpoint
         self.cos_bucket = cos_bucket
         self.cos_directory = cos_directory
@@ -91,27 +86,23 @@ class NotebookOp(ContainerOp):
             kwargs['arguments'] = ['mkdir -p ./%s && cd ./%s && '
                                    'curl -H "Cache-Control: no-cache" -L %s --output bootstrapper.py && '
                                    'python bootstrapper.py '
+                                   ' --notebook "%s" '
                                    ' --endpoint %s '
                                    ' --bucket %s '
                                    ' --directory "%s" '
                                    ' --tar-archive "%s" '
                                    ' --pipeline-outputs %s '
-                                   ' --pipeline-inputs %s '
-                                   ' --input "%s" '
-                                   ' --output "%s" '
-                                   ' --output-html "%s"' % (
+                                   ' --pipeline-inputs %s ' % (
                                        self.container_work_dir,
                                        self.container_work_dir,
                                        self.bootstrap_script_url,
+                                       self.notebook_name,
                                        self.cos_endpoint,
                                        self.cos_bucket,
                                        self.cos_directory,
                                        self.cos_pull_archive,
                                        self.pipeline_outputs,
                                        self.pipeline_inputs,
-                                       self.notebook_name,
-                                       self.notebook_result,
-                                       self.notebook_html
                                        )
                                    ]
 
