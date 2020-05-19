@@ -187,8 +187,8 @@ if __name__ == '__main__':
         convert_notebook_to_html(notebook_output, notebook_html)
 
         print("Uploading Errored Notebook back to Object Storage")
-        put_file_to_object_storage(cos_client, input_params['bucket'], notebook_output, notebook)
-        put_file_to_object_storage(cos_client, input_params['bucket'], notebook_html)
+        put_file_to_object_storage(cos_client, input_params['cos-bucket'], notebook_output, notebook)
+        put_file_to_object_storage(cos_client, input_params['cos-bucket'], notebook_html)
 
         raise
 
