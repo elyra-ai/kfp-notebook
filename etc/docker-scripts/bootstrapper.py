@@ -29,13 +29,13 @@ def import_with_auto_install(package):
 def parse_arguments():
     print("Parsing Arguments.....")
     parser = argparse.ArgumentParser(description='Description of your program')
+    parser.add_argument('-e', '--cos-endpoint', dest="cos-endpoint", help='Cloud object storage endpoint', required=True)
+    parser.add_argument('-b', '--cos-bucket', dest="cos-bucket", help='Cloud object storage bucket to use', required=True)
+    parser.add_argument('-d', '--cos-directory', dest="cos-directory", help='Directory in cloud object storage bucket to use', required=True)
+    parser.add_argument('-t', '--dependencies-archive', dest="dependencies-archive", help='Archive containing notebook and dependency artifacts', required=True)
     parser.add_argument('-i', '--notebook', dest="notebook", help='Notebook to execute', required=True)
-    parser.add_argument('-e', '--endpoint', dest="endpoint", help='Cloud object storage endpoint', required=True)
-    parser.add_argument('-b', '--bucket', dest="bucket", help='Cloud object storage bucket to use', required=True)
-    parser.add_argument('-d', '--directory', dest="directory", help='Directory in cloud object storage bucket to use', required=True)
-    parser.add_argument('-t', '--tar-archive', dest="tar-archive", help='Archive containing notebook and dependency artifacts', required=True)
-    parser.add_argument('-p', '--pipeline-outputs', dest="pipeline-outputs", help='Files to output to object storage', required=True)
-    parser.add_argument('-l', '--pipeline-inputs', dest="pipeline-inputs", help='Files to pull in from parent node', required=False)
+    parser.add_argument('-p', '--outputs', dest="outputs", help='Files to output to object store', required=True)
+    parser.add_argument('-l', '--inputs', dest="inputs", help='Files to pull in from parent node', required=False)
     args = vars(parser.parse_args())
 
     return args
@@ -46,7 +46,6 @@ def convert_notebook_to_html(notebook_file, html_file):
                 Args:
                     notebook_file: object storage client
                     html_file: name of what the html output file should be
-
                 Returns:
                     html_file: the converted notebook in html format
                 """
@@ -61,7 +60,7 @@ def convert_notebook_to_html(notebook_file, html_file):
 
 
 def get_object_storage_filename(filename):
-    return os.path.join(input_params['directory'], filename)
+    return os.path.join(input_params['cos-directory'], filename)
 
 
 def get_file_from_object_storage(client, bucket_name, file_to_get):
@@ -131,25 +130,25 @@ if __name__ == '__main__':
 
     input_params = parse_arguments()
 
-    cos_endpoint = urlparse(input_params['endpoint'])
+    cos_endpoint = urlparse(input_params['cos-endpoint'])
     cos_client = minio.Minio(cos_endpoint.netloc,
                              access_key=os.getenv('AWS_ACCESS_KEY_ID'),
                              secret_key=os.getenv('AWS_SECRET_ACCESS_KEY'),
                              secure=False)
 
-    get_file_from_object_storage(cos_client, input_params['bucket'], input_params['tar-archive'])
+    get_file_from_object_storage(cos_client, input_params['cos-bucket'], input_params['dependencies-archive'])
 
     print('Processing dependencies........')
-    if 'pipeline-inputs' in input_params.keys():
-        input_list = input_params['pipeline-inputs'].split(",")
+    if 'inputs' in input_params.keys():
+        input_list = input_params['inputs'].split(",")
         if input_list and len(input_list) > 0:
             for file in input_list:
                 if file and file != 'None':
-                    get_file_from_object_storage(cos_client, input_params['bucket'], file)
+                    get_file_from_object_storage(cos_client, input_params['cos-bucket'], file)
 
     print("TAR Archive pulled from Object Storage.")
     print("Unpacking........")
-    subprocess.call(['tar', '-zxvf', input_params["tar-archive"]])
+    subprocess.call(['tar', '-zxvf', input_params["dependencies-archive"]])
     print("Unpacking Complete.")
 
     # Execute notebook
@@ -171,17 +170,17 @@ if __name__ == '__main__':
 
         convert_notebook_to_html(notebook_output, notebook_html)
         print("Uploading Result Notebook back to Object Storage")
-        put_file_to_object_storage(cos_client, input_params['bucket'], notebook_output, notebook)
-        put_file_to_object_storage(cos_client, input_params['bucket'], notebook_html)
+        put_file_to_object_storage(cos_client, input_params['cos-bucket'], notebook_output, notebook)
+        put_file_to_object_storage(cos_client, input_params['cos-bucket'], notebook_html)
 
 
         print('Processing outputs........')
-        if 'pipeline-outputs' in input_params.keys():
-            output_list = input_params['pipeline-outputs'].split(",")
+        if 'outputs' in input_params.keys():
+            output_list = input_params['outputs'].split(",")
             if output_list and len(output_list) > 0:
                 for file in output_list:
                     if file and file != 'None':
-                        put_file_to_object_storage(cos_client, input_params['bucket'], file)
+                        put_file_to_object_storage(cos_client, input_params['cos-bucket'], file)
     except:
         # log in case of errors
         print("Unexpected error:", sys.exc_info()[0])
