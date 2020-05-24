@@ -31,7 +31,7 @@ def parse_arguments():
     parser = argparse.ArgumentParser(description='Description of your program')
     parser.add_argument('-e', '--cos-endpoint', dest="cos-endpoint", help='Cloud object storage endpoint', required=True)
     parser.add_argument('-b', '--cos-bucket', dest="cos-bucket", help='Cloud object storage bucket to use', required=True)
-    parser.add_argument('-d', '--cos-directory', dest="cos-directory", help='Directory in cloud object storage bucket to use', required=True)
+    parser.add_argument('-d', '--cos-directory', dest="cos-directory", help='Working directory in cloud object storage bucket to use', required=True)
     parser.add_argument('-t', '--dependencies-archive', dest="dependencies-archive", help='Archive containing notebook and dependency artifacts', required=True)
     parser.add_argument('-i', '--notebook', dest="notebook", help='Notebook to execute', required=True)
     parser.add_argument('-p', '--outputs', dest="outputs", help='Files to output to object store', required=True)
@@ -42,13 +42,13 @@ def parse_arguments():
 
 
 def convert_notebook_to_html(notebook_file, html_file):
-    """ Function to convert a Jupyter notebook file (.ipynb) into an html file
-                Args:
-                    notebook_file: object storage client
-                    html_file: name of what the html output file should be
-                Returns:
-                    html_file: the converted notebook in html format
-                """
+    """
+    Function to convert a Jupyter notebook file (.ipynb) into an html file
+
+    :param notebook_file: object storage client
+    :param html_file: name of what the html output file should be
+    :return: html_file: the converted notebook in html format
+    """
     print("Converting from ipynb to html....")
     nb = nbformat.read(notebook_file, as_version=4)
     html_exporter = nbconvert.HTMLExporter()
@@ -60,16 +60,23 @@ def convert_notebook_to_html(notebook_file, html_file):
 
 
 def get_object_storage_filename(filename):
+    """
+    Function to pre-pend cloud storage working dir to file name
+
+    :param filename: the local file
+    :return: the full path of the object storage file
+    """
     return os.path.join(input_params['cos-directory'], filename)
 
 
 def get_file_from_object_storage(client, bucket_name, file_to_get):
-    """ Abstracted function to get files from an object storage
-                Args:
-                    client: object storage client
-                    bucket_name: bucket where files are located
-                    file_to_get: filename
-                """
+    """
+    Utility function to get files from an object storage
+
+    :param client: object storage client
+    :param bucket_name: bucket where files are located
+    :param file_to_get: filename
+    """
 
     print('Get file {} from bucket {}'.format(file_to_get, bucket_name))
     object_to_get = get_object_storage_filename(file_to_get)
@@ -83,13 +90,13 @@ def get_file_from_object_storage(client, bucket_name, file_to_get):
 
 
 def put_file_to_object_storage(client, bucket_name, file_to_upload, object_name=None):
-    """ Abstracted function to put files into an object storage
-            Args:
-                client: object storage client
-                bucket_name: bucket where files are located
-                file_to_upload: filename
-                object_name: remote filename (used to rename)
-            """
+    """
+    Utility function to put files into an object storage
+    :param client: object storage client
+    :param bucket_name: bucket where files are located
+    :param file_to_upload: filename
+    :param object_name: remote filename (used to rename)
+    """
 
     object_to_upload = object_name
     if not object_to_upload:
