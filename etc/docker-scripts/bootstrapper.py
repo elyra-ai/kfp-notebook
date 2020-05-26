@@ -32,7 +32,7 @@ def parse_arguments():
     parser.add_argument('-e', '--cos-endpoint', dest="cos-endpoint", help='Cloud object storage endpoint', required=True)
     parser.add_argument('-b', '--cos-bucket', dest="cos-bucket", help='Cloud object storage bucket to use', required=True)
     parser.add_argument('-d', '--cos-directory', dest="cos-directory", help='Working directory in cloud object storage bucket to use', required=True)
-    parser.add_argument('-t', '--dependencies-archive', dest="dependencies-archive", help='Archive containing notebook and dependency artifacts', required=True)
+    parser.add_argument('-t', '--cos-dependencies-archive', dest="cos-dependencies-archive", help='Archive containing notebook and dependency artifacts', required=True)
     parser.add_argument('-i', '--notebook', dest="notebook", help='Notebook to execute', required=True)
     parser.add_argument('-p', '--outputs', dest="outputs", help='Files to output to object store', required=True)
     parser.add_argument('-l', '--inputs', dest="inputs", help='Files to pull in from parent node', required=False)
@@ -143,7 +143,7 @@ if __name__ == '__main__':
                              secret_key=os.getenv('AWS_SECRET_ACCESS_KEY'),
                              secure=False)
 
-    get_file_from_object_storage(cos_client, input_params['cos-bucket'], input_params['dependencies-archive'])
+    get_file_from_object_storage(cos_client, input_params['cos-bucket'], input_params['cos-dependencies-archive'])
 
     print('Processing dependencies........')
     if 'inputs' in input_params.keys():
@@ -155,7 +155,7 @@ if __name__ == '__main__':
 
     print("TAR Archive pulled from Object Storage.")
     print("Unpacking........")
-    subprocess.call(['tar', '-zxvf', input_params["dependencies-archive"]])
+    subprocess.call(['tar', '-zxvf', input_params["cos-dependencies-archive"]])
     print("Unpacking Complete.")
 
     # Execute notebook

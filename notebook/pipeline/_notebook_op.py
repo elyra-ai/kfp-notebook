@@ -89,7 +89,7 @@ class NotebookOp(ContainerOp):
                                    ' --cos-endpoint %s '
                                    ' --cos-bucket %s '
                                    ' --cos-directory "%s" '
-                                   ' --dependencies-archive "%s" '
+                                   ' --cos-dependencies-archive "%s" '
                                    ' --outputs %s '
                                    ' --inputs %s '
                                    ' --notebook "%s" ' % (
