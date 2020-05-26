@@ -70,8 +70,8 @@ class NotebookOp(ContainerOp):
             self.bootstrap_script_url = 'https://raw.githubusercontent.com/akchinSTC/' \
                                         'kfp-notebook/ISSUE-527/etc/docker-scripts/bootstrapper.py'
 
-        if 'image' not in kwargs:  # default image used if none specified
-            kwargs['image'] = 'elyra/tensorflow:1.15.2-py3'
+        if 'image' not in kwargs:
+            ValueError("You need to provide an image.")
 
         if notebook is None:
             ValueError("You need to provide a notebook.")
