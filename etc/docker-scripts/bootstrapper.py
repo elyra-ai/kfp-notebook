@@ -159,7 +159,8 @@ if __name__ == '__main__':
     print("Unpacking Complete.")
 
     # Execute notebook
-    notebook = os.path.basename(str(input_params['notebook']))
+    notebook = os.path.basename(input_params['notebook'])
+    print('>>> {}'.format(notebook))
     notebook_name = notebook.replace('.ipynb', '')
     notebook_output = notebook_name + '-output.ipynb'
     notebook_html = notebook_name + '.html'
