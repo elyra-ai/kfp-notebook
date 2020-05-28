@@ -67,8 +67,8 @@ class NotebookOp(ContainerOp):
             """ If bootstrap_script arg with URL not provided, use the one baked in here.
             """
 
-            self.bootstrap_script_url = 'https://raw.githubusercontent.com/akchinSTC/' \
-                                        'kfp-notebook/ISSUE-527/etc/docker-scripts/bootstrapper.py'
+            self.bootstrap_script_url = 'https://raw.githubusercontent.com/elyra-ai/' \
+                                        'kfp-notebook/master/etc/docker-scripts/bootstrapper.py'
 
         if 'image' not in kwargs:
             ValueError("You need to provide an image.")
