@@ -33,10 +33,10 @@ class NotebookOp(ContainerOp):
                  cos_endpoint: str,
                  cos_bucket: str,
                  cos_directory: str,
-                 cos_pull_archive: str,
+                 cos_dependencies_archive: str,
                  pipeline_outputs: str,
                  pipeline_inputs: str,
-                 bootscript: str = None,
+                 bootstrap_script_url: str = None,
                  **kwargs):
         """Create a new instance of ContainerOp.
         Args:
@@ -44,7 +44,7 @@ class NotebookOp(ContainerOp):
           cos_endpoint: object storage endpoint e.g weaikish1.fyre.ibm.com:30442
           cos_bucket: bucket to retrieve archive from
           cos_directory: name of the directory in the object storage bucket to pull
-          cos_pull_archive: archive file name to get from object storage bucket e.g archive1.tar.gz
+          cos_dependencies_archive: archive file name to get from object storage bucket e.g archive1.tar.gz
           pipeline_outputs: comma delimited list of files produced by the notebook
           pipeline_inputs: comma delimited list of files to be consumed/are required by the notebook
           kwargs: additional key value pairs to pass e.g. name, image, sidecars & is_exit_handler.
@@ -57,9 +57,9 @@ class NotebookOp(ContainerOp):
         self.cos_endpoint = cos_endpoint
         self.cos_bucket = cos_bucket
         self.cos_directory = cos_directory
-        self.cos_pull_archive = cos_pull_archive
+        self.cos_dependencies_archive = cos_dependencies_archive
         self.container_work_dir = "jupyter-work-dir"
-        self.bootstrap_script_url = bootscript
+        self.bootstrap_script_url = bootstrap_script_url
         self.pipeline_outputs = pipeline_outputs
         self.pipeline_inputs = pipeline_inputs
 
@@ -70,8 +70,8 @@ class NotebookOp(ContainerOp):
             self.bootstrap_script_url = 'https://raw.githubusercontent.com/elyra-ai/' \
                                         'kfp-notebook/master/etc/docker-scripts/bootstrapper.py'
 
-        if 'image' not in kwargs:  # default image used if none specified
-            kwargs['image'] = 'tensorflow/tensorflow:1.12.3-py'
+        if 'image' not in kwargs:
+            ValueError("You need to provide an image.")
 
         if notebook is None:
             ValueError("You need to provide a notebook.")
@@ -86,23 +86,23 @@ class NotebookOp(ContainerOp):
             kwargs['arguments'] = ['mkdir -p ./%s && cd ./%s && '
                                    'curl -H "Cache-Control: no-cache" -L %s --output bootstrapper.py && '
                                    'python bootstrapper.py '
-                                   ' --notebook "%s" '
-                                   ' --endpoint %s '
-                                   ' --bucket %s '
-                                   ' --directory "%s" '
-                                   ' --tar-archive "%s" '
-                                   ' --pipeline-outputs %s '
-                                   ' --pipeline-inputs %s ' % (
+                                   ' --cos-endpoint %s '
+                                   ' --cos-bucket %s '
+                                   ' --cos-directory "%s" '
+                                   ' --cos-dependencies-archive "%s" '
+                                   ' --outputs %s '
+                                   ' --inputs %s '
+                                   ' --notebook "%s" ' % (
                                        self.container_work_dir,
                                        self.container_work_dir,
                                        self.bootstrap_script_url,
-                                       self.notebook_name,
                                        self.cos_endpoint,
                                        self.cos_bucket,
                                        self.cos_directory,
-                                       self.cos_pull_archive,
+                                       self.cos_dependencies_archive,
                                        self.pipeline_outputs,
                                        self.pipeline_inputs,
+                                       self.notebook
                                        )
                                    ]
 
@@ -122,4 +122,3 @@ class NotebookOp(ContainerOp):
             name_with_extension = '{}.{}'.format(name, extension)
 
         return name_with_extension
-
