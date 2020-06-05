@@ -13,18 +13,42 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import shutil
 import subprocess
 import sys
+from packaging import version
 
 
-def import_with_auto_install(package):
-    try:
-        return __import__(package)
-    except ImportError:
-        print('Updating package {}'.format(package))
-        subprocess.check_call([sys.executable, '-m', 'pip', 'install', '--upgrade', package])
+def package_install():
 
+    elyra_package_list = package_list_to_dict("requirements-elyra.txt")
+    current_package_list = package_list_to_dict("requirements-current.txt")
+    to_install_list = []
+
+    for package, ver in elyra_package_list.items():
+        if package in current_package_list:
+            if version.parse(ver) > version.parse(current_package_list[package]):
+                print("Updating %s package from version %s to %s..." % (package, current_package_list[package], ver))
+                to_install_list.append(package+'=='+ver)
+            elif version.parse(ver) < version.parse(current_package_list[package]):
+                print("Newer %s package with version %s already installed. Skipping..." %
+                      (package, current_package_list[package]))
+        else:
+            print("Package not found. Installing %s package with version %s..." % (package, ver))
+            to_install_list.append(package+'=='+ver)
+
+    if to_install_list:
+        subprocess.check_call([sys.executable, '-m', 'pip', 'install'] + to_install_list)
+
+
+def package_list_to_dict(filename):
+    package_dict = {}
+    with open(filename) as fh:
+        for line in fh:
+            if line[0] != '#':
+                package_name, package_version = line.strip('\n').split(sep="==")
+                package_dict[package_name] = package_version
+
+    return package_dict
 
 def parse_arguments():
     print("Parsing Arguments.....")
@@ -116,13 +140,9 @@ def put_file_to_object_storage(client, bucket_name, file_to_upload, object_name=
 
 
 if __name__ == '__main__':
-    import_with_auto_install("jupyter_client")
-    import_with_auto_install("papermill")
-    import_with_auto_install("minio")
-    import_with_auto_install("argparse")
-    import_with_auto_install("nbconvert")
-    import_with_auto_install("nbformat")
-    import_with_auto_install("ipykernel")
+
+    package_install()
+    subprocess.check_call([sys.executable, '-m', 'pip', 'freeze'])
 
     import os
     import minio
@@ -179,7 +199,6 @@ if __name__ == '__main__':
         print("Uploading Result Notebook back to Object Storage")
         put_file_to_object_storage(cos_client, input_params['cos-bucket'], notebook_output, notebook)
         put_file_to_object_storage(cos_client, input_params['cos-bucket'], notebook_html)
-
 
         print('Processing outputs........')
         if 'outputs' in input_params.keys():
