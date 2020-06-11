@@ -36,6 +36,7 @@ class NotebookOp(ContainerOp):
                  cos_dependencies_archive: str,
                  pipeline_outputs: str,
                  pipeline_inputs: str,
+                 requirements_url: str = None,
                  bootstrap_script_url: str = None,
                  **kwargs):
         """Create a new instance of ContainerOp.
@@ -47,6 +48,8 @@ class NotebookOp(ContainerOp):
           cos_dependencies_archive: archive file name to get from object storage bucket e.g archive1.tar.gz
           pipeline_outputs: comma delimited list of files produced by the notebook
           pipeline_inputs: comma delimited list of files to be consumed/are required by the notebook
+          requirements_url: URL to a python requirements.txt file to be installed prior to running the notebook
+          bootstrap_script_url: URL to a custom python bootstrap script to run
           kwargs: additional key value pairs to pass e.g. name, image, sidecars & is_exit_handler.
                   See Kubeflow pipelines ContainerOp definition for more parameters or how to use
                   https://kubeflow-pipelines.readthedocs.io/en/latest/source/kfp.dsl.html#kfp.dsl.ContainerOp
@@ -60,15 +63,17 @@ class NotebookOp(ContainerOp):
         self.cos_dependencies_archive = cos_dependencies_archive
         self.container_work_dir = "jupyter-work-dir"
         self.bootstrap_script_url = bootstrap_script_url
+        self.requirements_url = requirements_url
         self.pipeline_outputs = pipeline_outputs
         self.pipeline_inputs = pipeline_inputs
 
         if self.bootstrap_script_url is None:
-            """ If bootstrap_script arg with URL not provided, use the one baked in here.
-            """
-
             self.bootstrap_script_url = 'https://raw.githubusercontent.com/elyra-ai/' \
                                         'kfp-notebook/master/etc/docker-scripts/bootstrapper.py'
+
+        if self.requirements_url is None:
+            self.requirements_url = 'https://raw.githubusercontent.com/elyra-ai/' \
+                                    'kfp-notebook/master/etc/requirements-elyra.txt'
 
         if 'image' not in kwargs:
             ValueError("You need to provide an image.")
@@ -85,6 +90,9 @@ class NotebookOp(ContainerOp):
             kwargs['command'] = ['sh', '-c']
             kwargs['arguments'] = ['mkdir -p ./%s && cd ./%s && '
                                    'curl -H "Cache-Control: no-cache" -L %s --output bootstrapper.py && '
+                                   'curl -H "Cache-Control: no-cache" -L %s --output requirements-elyra.txt && '
+                                   'python -m pip install packaging &&'
+                                   'python -m pip freeze > requirements-current.txt &&'
                                    'python bootstrapper.py '
                                    ' --cos-endpoint %s '
                                    ' --cos-bucket %s '
@@ -96,6 +104,7 @@ class NotebookOp(ContainerOp):
                                        self.container_work_dir,
                                        self.container_work_dir,
                                        self.bootstrap_script_url,
+                                       self.requirements_url,
                                        self.cos_endpoint,
                                        self.cos_bucket,
                                        self.cos_directory,
