@@ -21,14 +21,14 @@ limitations under the License.
 We are using the bumpversion (more specifically bump2version active fork) to help with
 some updates during the release steps.
 
-* Update the release version (e.g. 0.5.0)
+* Update the release version (e.g. 0.9.0)
 
 ```bash
 bump2version release
-sed -i'.bak' -e 's/master/v0.5.0/g' notebook/pipeline/_notebook_op.py
-rm notebook/pipeline/_notebook_op.py.bak
-git commit -a -m"KFP Notebook release 0.5.0"
-git tag v0.5.0
+sed -i'.bak' -e 's/master/v0.9.0/g' kfp_notebook/pipeline/_notebook_op.py
+rm kfp_notebook/pipeline/_notebook_op.py.bak
+git commit -a -m"KFP Notebook release 0.9.0"
+git tag v0.9.0
 ```
 
 Note: Use `bump2version suffix` when releasing from a `dev` suffixed version.
@@ -44,7 +44,7 @@ twine upload --sign dist/*
 
 ```bash
 bump2version minor
-sed -i'.bak' -e 's/v0.5.0/master/g' notebook/pipeline/_notebook_op.py
-rm notebook/pipeline/_notebook_op.py.bak
+sed -i'.bak' -e 's/v0.9.0/master/g' kfp_notebook/pipeline/_notebook_op.py
+rm kfp_notebook/pipeline/_notebook_op.py.bak
 git commit -a -m"Prepare for next development iteration"
 ```
