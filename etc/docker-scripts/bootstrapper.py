@@ -26,7 +26,11 @@ def package_install():
 
     for package, ver in elyra_package_list.items():
         if package in current_package_list:
-            if version.parse(ver) > version.parse(current_package_list[package]):
+            if "git+" in current_package_list[package]:
+                print("WARNING: Source package %s found already installed from %s. This may "
+                      "conflict with the required version: %s . Skipping..." %
+                      (package, current_package_list[package], ver))
+            elif version.parse(ver) > version.parse(current_package_list[package]):
                 print("Updating %s package from version %s to %s..." % (package, current_package_list[package], ver))
                 to_install_list.append(package+'=='+ver)
             elif version.parse(ver) < version.parse(current_package_list[package]):
@@ -45,7 +49,13 @@ def package_list_to_dict(filename):
     with open(filename) as fh:
         for line in fh:
             if line[0] != '#':
-                package_name, package_version = line.strip('\n').split(sep="==")
+                if " @ " in line:
+                    package_name, package_version = line.strip('\n').split(sep=" @ ")
+                elif "===" in line:
+                    package_name, package_version = line.strip('\n').split(sep="===")
+                else:
+                    package_name, package_version = line.strip('\n').split(sep="==")
+
                 package_dict[package_name] = package_version
 
     return package_dict
