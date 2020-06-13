@@ -51,6 +51,8 @@ def package_list_to_dict(filename):
             if line[0] != '#':
                 if " @ " in line:
                     package_name, package_version = line.strip('\n').split(sep=" @ ")
+                elif "===" in line:
+                    package_name, package_version = line.strip('\n').split(sep="===")
                 else:
                     package_name, package_version = line.strip('\n').split(sep="==")
 
