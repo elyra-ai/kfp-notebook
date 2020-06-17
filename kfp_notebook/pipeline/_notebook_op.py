@@ -34,8 +34,8 @@ class NotebookOp(ContainerOp):
                  cos_bucket: str,
                  cos_directory: str,
                  cos_dependencies_archive: str,
-                 pipeline_outputs: str,
-                 pipeline_inputs: str,
+                 pipeline_outputs: str = None,
+                 pipeline_inputs: str = None,
                  requirements_url: str = None,
                  bootstrap_script_url: str = None,
                  **kwargs):
@@ -67,9 +67,11 @@ class NotebookOp(ContainerOp):
         self.pipeline_outputs = pipeline_outputs
         self.pipeline_inputs = pipeline_inputs
 
+        argument_list = []
+
         if self.bootstrap_script_url is None:
-            self.bootstrap_script_url = 'https://raw.githubusercontent.com/elyra-ai/' \
-                                        'kfp-notebook/v0.9.1/etc/docker-scripts/bootstrapper.py'
+            self.bootstrap_script_url = 'https://raw.githubusercontent.com/akchinSTC/' \
+                                        'kfp-notebook/ISSUE-30/etc/docker-scripts/bootstrapper.py'
 
         if self.requirements_url is None:
             self.requirements_url = 'https://raw.githubusercontent.com/elyra-ai/' \
@@ -87,33 +89,37 @@ class NotebookOp(ContainerOp):
                 NOTE: Images being pulled must have python3 available on PATH and cURL utility
             """
 
+            argument_list.append('mkdir -p ./%s && cd ./%s && '
+                                 'curl -H "Cache-Control: no-cache" -L %s --output bootstrapper.py && '
+                                 'curl -H "Cache-Control: no-cache" -L %s --output requirements-elyra.txt && '
+                                 'python -m pip install packaging && '
+                                 'python -m pip freeze > requirements-current.txt && '
+                                 'python bootstrapper.py '
+                                 ' --cos-endpoint %s '
+                                 ' --cos-bucket %s '
+                                 ' --cos-directory "%s" '
+                                 ' --cos-dependencies-archive "%s" '
+                                 ' --notebook "%s" ' % (
+                                     self.container_work_dir,
+                                     self.container_work_dir,
+                                     self.bootstrap_script_url,
+                                     self.requirements_url,
+                                     self.cos_endpoint,
+                                     self.cos_bucket,
+                                     self.cos_directory,
+                                     self.cos_dependencies_archive,
+                                     self.notebook
+                                     )
+                                 )
+
+            if self.pipeline_inputs:
+                argument_list.append(['--pipeline_inputs', self.pipeline_inputs])
+
+            if self.pipeline_outputs:
+                argument_list.append(['--pipeline_outputs', self.pipeline_outputs])
+
             kwargs['command'] = ['sh', '-c']
-            kwargs['arguments'] = ['mkdir -p ./%s && cd ./%s && '
-                                   'curl -H "Cache-Control: no-cache" -L %s --output bootstrapper.py && '
-                                   'curl -H "Cache-Control: no-cache" -L %s --output requirements-elyra.txt && '
-                                   'python -m pip install packaging &&'
-                                   'python -m pip freeze > requirements-current.txt &&'
-                                   'python bootstrapper.py '
-                                   ' --cos-endpoint %s '
-                                   ' --cos-bucket %s '
-                                   ' --cos-directory "%s" '
-                                   ' --cos-dependencies-archive "%s" '
-                                   ' --outputs %s '
-                                   ' --inputs %s '
-                                   ' --notebook "%s" ' % (
-                                       self.container_work_dir,
-                                       self.container_work_dir,
-                                       self.bootstrap_script_url,
-                                       self.requirements_url,
-                                       self.cos_endpoint,
-                                       self.cos_bucket,
-                                       self.cos_directory,
-                                       self.cos_dependencies_archive,
-                                       self.pipeline_outputs,
-                                       self.pipeline_inputs,
-                                       self.notebook
-                                       )
-                                   ]
+            kwargs['arguments'] = argument_list
 
         super().__init__(**kwargs)
 
