@@ -113,10 +113,10 @@ class NotebookOp(ContainerOp):
                                  )
 
             if self.pipeline_inputs:
-                argument_list.append(['--pipeline_inputs', self.pipeline_inputs])
+                argument_list.append(['--inputs', self.pipeline_inputs])
 
             if self.pipeline_outputs:
-                argument_list.append(['--pipeline_outputs', self.pipeline_outputs])
+                argument_list.append(['--outputs', self.pipeline_outputs])
 
             kwargs['command'] = ['sh', '-c']
             kwargs['arguments'] = argument_list
