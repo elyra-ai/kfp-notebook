@@ -95,11 +95,11 @@ class NotebookOp(ContainerOp):
                                  'python -m pip install packaging && '
                                  'python -m pip freeze > requirements-current.txt && '
                                  'python bootstrapper.py '
-                                 ' --cos-endpoint %s '
-                                 ' --cos-bucket %s '
-                                 ' --cos-directory "%s" '
-                                 ' --cos-dependencies-archive "%s" '
-                                 ' --notebook "%s" ' % (
+                                 '--cos-endpoint %s '
+                                 '--cos-bucket %s '
+                                 '--cos-directory "%s" '
+                                 '--cos-dependencies-archive "%s" '
+                                 '--notebook "%s" ' % (
                                      self.container_work_dir,
                                      self.container_work_dir,
                                      self.bootstrap_script_url,
@@ -137,3 +137,9 @@ class NotebookOp(ContainerOp):
             name_with_extension = '{}.{}'.format(name, extension)
 
         return name_with_extension
+
+    def add_pipeline_inputs(self, pipeline_inputs):
+        self.container.args[0] += ("--inputs " + pipeline_inputs)
+
+    def add_pipeline_outputs(self, pipeline_outputs):
+        self.container.args[0] += ("--outputs " + pipeline_outputs)
