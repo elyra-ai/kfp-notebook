@@ -179,7 +179,7 @@ if __name__ == '__main__':
     if input_params['inputs']:
         input_list = input_params['inputs'].split(",")
         for file in input_list:
-            get_file_from_object_storage(cos_client, input_params['cos-bucket'], file)
+            get_file_from_object_storage(cos_client, input_params['cos-bucket'], file.strip())
 
     print("TAR Archive pulled from Object Storage.")
     print("Unpacking........")
@@ -212,7 +212,7 @@ if __name__ == '__main__':
         if input_params['outputs']:
             output_list = input_params['outputs'].split(",")
             for file in output_list:
-                put_file_to_object_storage(cos_client, input_params['cos-bucket'], file)
+                put_file_to_object_storage(cos_client, input_params['cos-bucket'], file.strip())
     except:
         # log in case of errors
         print("Unexpected error:", sys.exc_info()[0])
