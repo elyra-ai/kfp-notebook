@@ -70,8 +70,8 @@ class NotebookOp(ContainerOp):
         argument_list = []
 
         if self.bootstrap_script_url is None:
-            self.bootstrap_script_url = 'https://raw.githubusercontent.com/akchinSTC/' \
-                                        'kfp-notebook/ISSUE-30/etc/docker-scripts/bootstrapper.py'
+            self.bootstrap_script_url = 'https://raw.githubusercontent.com/elyra-ai/' \
+                                        'kfp-notebook/v0.9.1/etc/docker-scripts/bootstrapper.py'
 
         if self.requirements_url is None:
             self.requirements_url = 'https://raw.githubusercontent.com/elyra-ai/' \
