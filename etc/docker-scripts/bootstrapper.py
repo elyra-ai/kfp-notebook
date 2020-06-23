@@ -177,7 +177,7 @@ if __name__ == '__main__':
     get_file_from_object_storage(cos_client, input_params['cos-bucket'], input_params['cos-dependencies-archive'])
 
     print('Processing dependencies........')
-    if input_params['inputs'].strip():
+    if 'inputs' in input_params and input_params['inputs'].strip():
         input_list = input_params['inputs'].split(",")
         for file in input_list:
             get_file_from_object_storage(cos_client, input_params['cos-bucket'], file.strip())
@@ -210,7 +210,7 @@ if __name__ == '__main__':
         put_file_to_object_storage(cos_client, input_params['cos-bucket'], notebook_html)
 
         print('Processing outputs........')
-        if input_params['outputs'].strip():
+        if 'outputs' in input_params and input_params['outputs'].strip():
             output_list = input_params['outputs'].split(",")
             for file in output_list:
                 put_file_to_object_storage(cos_client, input_params['cos-bucket'], file.strip())
