@@ -89,27 +89,26 @@ class NotebookOp(ContainerOp):
                 NOTE: Images being pulled must have python3 available on PATH and cURL utility
             """
 
-            argument_list.append('mkdir -p ./%s && cd ./%s && '
-                                 'curl -H "Cache-Control: no-cache" -L %s --output bootstrapper.py && '
-                                 'curl -H "Cache-Control: no-cache" -L %s --output requirements-elyra.txt && '
+            argument_list.append('mkdir -p ./{container_work_dir} && cd ./{container_work_dir} && '
+                                 'curl -H "Cache-Control: no-cache" -L {bootscript_url} --output bootstrapper.py && '
+                                 'curl -H "Cache-Control: no-cache" -L {reqs_url} --output requirements-elyra.txt && '
                                  'python -m pip install packaging && '
                                  'python -m pip freeze > requirements-current.txt && '
                                  'python bootstrapper.py '
-                                 '--cos-endpoint %s '
-                                 '--cos-bucket %s '
-                                 '--cos-directory "%s" '
-                                 '--cos-dependencies-archive "%s" '
-                                 '--notebook "%s" ' % (
-                                     self.container_work_dir,
-                                     self.container_work_dir,
-                                     self.bootstrap_script_url,
-                                     self.requirements_url,
-                                     self.cos_endpoint,
-                                     self.cos_bucket,
-                                     self.cos_directory,
-                                     self.cos_dependencies_archive,
-                                     self.notebook
-                                     )
+                                 '--cos-endpoint {cos_endpoint} '
+                                 '--cos-bucket {cos_bucket} '
+                                 '--cos-directory "{cos_directory}" '
+                                 '--cos-dependencies-archive "{cos_dependencies_archive}" '
+                                 '--notebook "{notebook}" '.format(
+                                    container_work_dir=self.container_work_dir,
+                                    bootscript_url=self.bootstrap_script_url,
+                                    reqs_url=self.requirements_url,
+                                    cos_endpoint=self.cos_endpoint,
+                                    cos_bucket=self.cos_bucket,
+                                    cos_directory=self.cos_directory,
+                                    cos_dependencies_archive=self.cos_dependencies_archive,
+                                    notebook=self.notebook
+                                    )
                                  )
 
             if self.pipeline_inputs:

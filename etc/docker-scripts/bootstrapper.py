@@ -60,9 +60,10 @@ def package_list_to_dict(filename):
 
     return package_dict
 
+
 def parse_arguments():
     print("Parsing Arguments.....")
-    parser = argparse.ArgumentParser(description='Description of your program')
+    parser = argparse.ArgumentParser()
     parser.add_argument('-e', '--cos-endpoint', dest="cos-endpoint", help='Cloud object storage endpoint', required=True)
     parser.add_argument('-b', '--cos-bucket', dest="cos-bucket", help='Cloud object storage bucket to use', required=True)
     parser.add_argument('-d', '--cos-directory', dest="cos-directory", help='Working directory in cloud object storage bucket to use', required=True)
@@ -176,7 +177,7 @@ if __name__ == '__main__':
     get_file_from_object_storage(cos_client, input_params['cos-bucket'], input_params['cos-dependencies-archive'])
 
     print('Processing dependencies........')
-    if input_params['inputs']:
+    if input_params['inputs'].strip():
         input_list = input_params['inputs'].split(",")
         for file in input_list:
             get_file_from_object_storage(cos_client, input_params['cos-bucket'], file.strip())
@@ -209,7 +210,7 @@ if __name__ == '__main__':
         put_file_to_object_storage(cos_client, input_params['cos-bucket'], notebook_html)
 
         print('Processing outputs........')
-        if input_params['outputs']:
+        if input_params['outputs'].strip():
             output_list = input_params['outputs'].split(",")
             for file in output_list:
                 put_file_to_object_storage(cos_client, input_params['cos-bucket'], file.strip())
