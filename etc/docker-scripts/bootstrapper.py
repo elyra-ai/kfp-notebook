@@ -60,15 +60,16 @@ def package_list_to_dict(filename):
 
     return package_dict
 
+
 def parse_arguments():
     print("Parsing Arguments.....")
-    parser = argparse.ArgumentParser(description='Description of your program')
+    parser = argparse.ArgumentParser()
     parser.add_argument('-e', '--cos-endpoint', dest="cos-endpoint", help='Cloud object storage endpoint', required=True)
     parser.add_argument('-b', '--cos-bucket', dest="cos-bucket", help='Cloud object storage bucket to use', required=True)
     parser.add_argument('-d', '--cos-directory', dest="cos-directory", help='Working directory in cloud object storage bucket to use', required=True)
     parser.add_argument('-t', '--cos-dependencies-archive', dest="cos-dependencies-archive", help='Archive containing notebook and dependency artifacts', required=True)
     parser.add_argument('-i', '--notebook', dest="notebook", help='Notebook to execute', required=True)
-    parser.add_argument('-p', '--outputs', dest="outputs", help='Files to output to object store', required=True)
+    parser.add_argument('-p', '--outputs', dest="outputs", help='Files to output to object store', required=False)
     parser.add_argument('-l', '--inputs', dest="inputs", help='Files to pull in from parent node', required=False)
     args = vars(parser.parse_args())
 
@@ -176,12 +177,10 @@ if __name__ == '__main__':
     get_file_from_object_storage(cos_client, input_params['cos-bucket'], input_params['cos-dependencies-archive'])
 
     print('Processing dependencies........')
-    if 'inputs' in input_params.keys():
+    if 'inputs' in input_params and input_params['inputs']:
         input_list = input_params['inputs'].split(",")
-        if input_list and len(input_list) > 0:
-            for file in input_list:
-                if file and file != 'None':
-                    get_file_from_object_storage(cos_client, input_params['cos-bucket'], file)
+        for file in input_list:
+            get_file_from_object_storage(cos_client, input_params['cos-bucket'], file.strip())
 
     print("TAR Archive pulled from Object Storage.")
     print("Unpacking........")
@@ -211,12 +210,10 @@ if __name__ == '__main__':
         put_file_to_object_storage(cos_client, input_params['cos-bucket'], notebook_html)
 
         print('Processing outputs........')
-        if 'outputs' in input_params.keys():
+        if 'outputs' in input_params and input_params['outputs']:
             output_list = input_params['outputs'].split(",")
-            if output_list and len(output_list) > 0:
-                for file in output_list:
-                    if file and file != 'None':
-                        put_file_to_object_storage(cos_client, input_params['cos-bucket'], file)
+            for file in output_list:
+                put_file_to_object_storage(cos_client, input_params['cos-bucket'], file.strip())
     except:
         # log in case of errors
         print("Unexpected error:", sys.exc_info()[0])
