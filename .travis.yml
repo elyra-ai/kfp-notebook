@@ -17,13 +17,14 @@
 
 language: python
 python:
+  - 3.7
   - 3.6
   - 3.5
 
 # Command to install dependencies, e.g. pip install -r requirements.txt --use-mirrors
-install: pip install -U tox-travis
+install: pip install -r etc/requirements-elyra.txt && pip install -r test-requirements.txt
 
 script:
-    make clean dist
+    make clean install && make test
 # Command to run tests, e.g. python setup.py test
 #script: tox
