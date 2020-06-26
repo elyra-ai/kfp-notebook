@@ -71,11 +71,11 @@ class NotebookOp(ContainerOp):
 
         if self.bootstrap_script_url is None:
             self.bootstrap_script_url = 'https://raw.githubusercontent.com/elyra-ai/' \
-                                        'kfp-notebook/master/etc/docker-scripts/bootstrapper.py'
+                                        'kfp-notebook/v0.10.0/etc/docker-scripts/bootstrapper.py'
 
         if self.requirements_url is None:
             self.requirements_url = 'https://raw.githubusercontent.com/elyra-ai/' \
-                                    'kfp-notebook/master/etc/requirements-elyra.txt'
+                                    'kfp-notebook/v0.10.0/etc/requirements-elyra.txt'
 
         if 'image' not in kwargs:
             ValueError("You need to provide an image.")
