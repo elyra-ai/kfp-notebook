@@ -17,7 +17,7 @@
 
 
 from kfp.dsl._container_op import BaseOp, ContainerOp
-
+from kubernetes.client.models import V1EnvVar
 
 """
 The NotebookOp uses a python script to bootstrap the user supplied image with the required dependencies.
@@ -142,3 +142,6 @@ class NotebookOp(ContainerOp):
 
     def add_pipeline_outputs(self, pipeline_outputs):
         self.container.args[0] += ("--outputs " + pipeline_outputs)
+
+    def add_environment_variable(self, name, value):
+        self.container.add_env_variable(V1EnvVar(name=name, value=value))
