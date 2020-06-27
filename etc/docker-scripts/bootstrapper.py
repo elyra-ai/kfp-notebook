@@ -31,6 +31,10 @@ def package_install():
                 print("WARNING: Source package %s found already installed from %s. This may "
                       "conflict with the required version: %s . Skipping..." %
                       (package, current_package_list[package], ver))
+            elif isinstance(version.parse(current_package_list[package]), version.LegacyVersion):
+                print("WARNING: Package %s found with unsupported Legacy version "
+                      "scheme %s already installed. Skipping..." %
+                      (package, current_package_list[package]))
             elif version.parse(ver) > version.parse(current_package_list[package]):
                 print("Updating %s package from version %s to %s..." % (package, current_package_list[package], ver))
                 to_install_list.append(package+'=='+ver)

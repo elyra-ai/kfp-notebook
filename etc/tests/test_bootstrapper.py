@@ -147,26 +147,32 @@ def test_fail_bad_notebook_main_method(monkeypatch, s3_setup, tmpdir):
 
 
 def test_package_installation(monkeypatch, virtualenv):
-    # TODO : Need to add tests for arbitrary equality and direct-source
+    # TODO : Need to add test for direct-source e.g. ' @ '
     elyra_dict = {'ipykernel': '5.3.0',
                   'ansiwrap': '0.8.4',
                   'packaging': '20.0',
+                  'text-extensions-for-pandas': '2.0.0'
                   }
-    current_dict = {'bleach': '3.1.5',
-                    'ansiwrap': '0.7.0',
-                    'packaging': '20.4',
-                    }
+    to_install_dict = {'bleach': '3.1.5',
+                       'ansiwrap': '0.7.0',
+                       'packaging': '20.4',
+                       'text-extensions-for-pandas': "0.0.1-prealpha"}
     correct_dict = {'ipykernel': '5.3.0',
                     'ansiwrap': '0.8.4',
                     'packaging': '20.4',
+                    'text-extensions-for-pandas': "0.0.1-prealpha"
                     }
 
-    mocked_func = mock.Mock(return_value="default", side_effect=[elyra_dict, current_dict])
+    mocked_func = mock.Mock(return_value="default", side_effect=[elyra_dict, to_install_dict])
 
     monkeypatch.setattr(bootstrapper, "package_list_to_dict", mocked_func)
     monkeypatch.setattr(sys, "executable", virtualenv.python)
-    for package, version in current_dict.items():
-        virtualenv.run("python -m pip install " + package + "==" + version)
+
+    virtualenv.run("python -m pip install bleach==3.1.5")
+    virtualenv.run("python -m pip install ansiwrap==0.7.0")
+    virtualenv.run("python -m pip install packaging==20.4")
+    virtualenv.run("python -m pip install git+https://github.com/CODAIT/"
+                   "text-extensions-for-pandas@3da59e5310b275260ae1441e52b9ab3c0c558515")
 
     bootstrapper.package_install()
     virtual_env_dict = {}
