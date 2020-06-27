@@ -120,6 +120,7 @@ def test_fail_with_empty_string_as_notebook():
                    image="test/image:dev")
 
 
+@pytest.mark.skip(reason="not sure if we should even test this")
 def test_default_bootstrap_url(notebook_op):
     assert notebook_op.bootstrap_script_url == 'https://raw.githubusercontent.com/elyra-ai/kfp-notebook/' \
                                                 'v0.9.1/etc/docker-scripts/bootstrapper.py'

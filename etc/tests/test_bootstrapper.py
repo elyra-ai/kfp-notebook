@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import subprocess
+
 import nbformat
 import papermill
 import pytest
@@ -22,12 +22,14 @@ import sys
 import minio
 import os
 
+from py_essentials import hashing as hs
+
 sys.path.append('etc/docker-scripts/')
 import bootstrapper
 
 
-@pytest.fixture
-def s3_setup(request):
+@pytest.fixture(scope='function')
+def s3_setup():
     bucket_name = "test-bucket"
     cos_client = minio.Minio("127.0.0.1:9000",
                              access_key="minioadmin",
@@ -35,15 +37,12 @@ def s3_setup(request):
                              secure=False)
     cos_client.make_bucket(bucket_name)
 
-    def cleanup():
-        cleanup_files = cos_client.list_objects(bucket_name)
-        for file in cleanup_files:
-            cos_client.remove_object(bucket_name, file.object_name)
-        cos_client.remove_bucket(bucket_name)
+    yield cos_client
 
-    request.addfinalizer(cleanup)
-
-    return cos_client
+    cleanup_files = cos_client.list_objects(bucket_name, recursive=True)
+    for file in cleanup_files:
+        cos_client.remove_object(bucket_name, file.object_name)
+    cos_client.remove_bucket(bucket_name)
 
 
 def test_main_method(monkeypatch, s3_setup, tmpdir):
@@ -53,28 +52,37 @@ def test_main_method(monkeypatch, s3_setup, tmpdir):
                      'cos-dependencies-archive': 'test-archive.tgz',
                      'notebook': 'etc/tests/resources/test-notebookA.ipynb',
                      'inputs': 'test-file.txt',
-                     'outputs': 'test-file.txt'}
+                     'outputs': 'test-file-copy.txt'}
     bucket_name = "test-bucket"
     monkeypatch.setattr(bootstrapper, "parse_arguments", lambda x: argument_dict)
     monkeypatch.setattr(bootstrapper, "package_install", lambda: True)
-    mocked_func = mock.Mock(return_value="default", side_effect=['test-archive.tgz',
-                                                                 'test-file.txt',
-                                                                 'test-notebookA-output.ipynb',
-                                                                 'test-notebookA.html',
-                                                                 'test-file.txt'])
-    monkeypatch.setattr(bootstrapper, "get_object_storage_filename", mocked_func)
     monkeypatch.setenv("AWS_ACCESS_KEY_ID", "minioadmin")
     monkeypatch.setenv("AWS_SECRET_ACCESS_KEY", "minioadmin")
 
     s3_setup.fput_object(bucket_name=bucket_name,
-                         object_name="test-file.txt",
+                         object_name="test-directory/test-file.txt",
                          file_path="README.md")
     s3_setup.fput_object(bucket_name=bucket_name,
-                         object_name="test-archive.tgz",
+                         object_name="test-directory/test-archive.tgz",
                          file_path="etc/tests/resources/test-archive.tgz")
 
     with tmpdir.as_cwd():
         bootstrapper.main()
+        post_run_local_file_list = ['test-archive.tgz',
+                                    'test-file.txt',
+                                    'test-file-copy.txt',
+                                    'test-notebookA-output.ipynb',
+                                    'test-notebookA.html']
+        post_run_s3_file_list = ['test-archive.tgz',
+                                 'test-file.txt',
+                                 'test-file-copy.txt',
+                                 'test-notebookA.ipynb',
+                                 'test-notebookA.html']
+        for file in post_run_local_file_list:
+            assert os.path.isfile(file)
+        for file in post_run_s3_file_list:
+            assert s3_setup.stat_object(bucket_name=bucket_name,
+                                        object_name="test-directory/"+file)
 
 
 def test_fail_bad_endpoint_main_method(monkeypatch, tmpdir):
@@ -138,28 +146,53 @@ def test_fail_bad_notebook_main_method(monkeypatch, s3_setup, tmpdir):
             bootstrapper.main()
 
 
-def test_package_installation(monkeypatch):
+def test_package_installation(monkeypatch, virtualenv):
+    # TODO : Need to add tests for arbitrary equality and direct-source
     elyra_dict = {'ipykernel': '5.3.0',
-                  'ansiwrap': '0.8.5',
-                  'package': '1.0.0'}
+                  'ansiwrap': '0.8.4',
+                  'packaging': '20.0',
+                  }
     current_dict = {'bleach': '3.1.5',
+                    'ansiwrap': '0.7.0',
+                    'packaging': '20.4',
+                    }
+    correct_dict = {'ipykernel': '5.3.0',
                     'ansiwrap': '0.8.4',
-                    'package': '1.0.2',
-                    'text-extensions-for-pandas':
-                        "git+https://github.com/test/text-extensions-for-pandas@a0dcb9196c6de6a2f58194cc49e48a25a18d099d"}
+                    'packaging': '20.4',
+                    }
+
     mocked_func = mock.Mock(return_value="default", side_effect=[elyra_dict, current_dict])
 
     monkeypatch.setattr(bootstrapper, "package_list_to_dict", mocked_func)
-    monkeypatch.setattr(subprocess, "check_call", lambda x: True)
+    monkeypatch.setattr(sys, "executable", virtualenv.python)
+    for package, version in current_dict.items():
+        virtualenv.run("python -m pip install " + package + "==" + version)
 
     bootstrapper.package_install()
+    virtual_env_dict = {}
+    output = virtualenv.run("python -m pip freeze", capture=True)
+    for line in output.strip().split('\n'):
+        if " @ " in line:
+            package_name, package_version = line.strip('\n').split(sep=" @ ")
+        elif "===" in line:
+            package_name, package_version = line.strip('\n').split(sep="===")
+        else:
+            package_name, package_version = line.strip('\n').split(sep="==")
+        virtual_env_dict[package_name] = package_version
+
+    for package, version in correct_dict.items():
+        assert virtual_env_dict[package] == version
 
 
 def test_convert_notebook_to_html(tmpdir):
     notebook_file = os.getcwd() + "/etc/tests/resources/test-notebookA.ipynb"
-    notebook_output_html_file = "notebookA.html"
+    notebook_output_html_file = "test-notebookA.html"
+    html_sha256 = 'dfff0325b8551b75a76fb3357bee60694a0e71b8fc8438c6382ce06777b14498'
     with tmpdir.as_cwd():
         bootstrapper.convert_notebook_to_html(notebook_file, notebook_output_html_file)
+
+        assert os.path.isfile(notebook_output_html_file)
+        assert hs.fileChecksum(notebook_output_html_file, "sha256") == html_sha256
 
 
 def test_fail_convert_notebook_to_html(tmpdir):
@@ -171,16 +204,20 @@ def test_fail_convert_notebook_to_html(tmpdir):
 
 
 def test_get_file_object_store(monkeypatch, s3_setup, tmpdir):
+    file_to_get = "README.md"
+    current_directory = os.getcwd() + '/'
     bucket_name = "test-bucket"
-    file_to_get = "test-file.txt"
+
     monkeypatch.setattr(bootstrapper, "get_object_storage_filename", lambda x: file_to_get)
 
     s3_setup.fput_object(bucket_name=bucket_name,
-                         object_name="test-file.txt",
-                         file_path="README.md")
+                         object_name=file_to_get,
+                         file_path=file_to_get)
 
     with tmpdir.as_cwd():
         bootstrapper.get_file_from_object_storage(s3_setup, bucket_name, file_to_get)
+        assert os.path.isfile(file_to_get)
+        assert hs.fileChecksum(file_to_get, "sha256") == hs.fileChecksum(current_directory+file_to_get, "sha256")
 
 
 def test_fail_get_file_object_store(monkeypatch, s3_setup, tmpdir):
@@ -196,12 +233,15 @@ def test_fail_get_file_object_store(monkeypatch, s3_setup, tmpdir):
 def test_put_file_object_store(monkeypatch, s3_setup, tmpdir):
     bucket_name = "test-bucket"
     file_to_put = "LICENSE"
+    current_directory = os.getcwd() + '/'
     monkeypatch.setattr(bootstrapper, "get_object_storage_filename", lambda x: file_to_put)
 
     bootstrapper.put_file_to_object_storage(s3_setup, bucket_name, file_to_put)
 
     with tmpdir.as_cwd():
-        s3_setup.get_object(bucket_name, file_to_put)
+        s3_setup.fget_object(bucket_name, file_to_put, file_to_put)
+        assert os.path.isfile(file_to_put)
+        assert hs.fileChecksum(file_to_put, "sha256") == hs.fileChecksum(current_directory+file_to_put, "sha256")
 
 
 def test_fail_invalid_filename_put_file_object_store(monkeypatch, s3_setup):
@@ -228,7 +268,15 @@ def test_parse_arguments():
                  '-t', 'test-archive.tgz',
                  '-i', 'test-notebook.ipynb',
                  '-b', 'test-bucket']
-    bootstrapper.parse_arguments(test_args)
+    args_dict = bootstrapper.parse_arguments(test_args)
+
+    assert args_dict['cos-endpoint'] == 'http://test.me.now'
+    assert args_dict['cos-directory'] == 'test-directory'
+    assert args_dict['cos-dependencies-archive'] == 'test-archive.tgz'
+    assert args_dict['cos-bucket'] == 'test-bucket'
+    assert args_dict['notebook'] == 'test-notebook.ipynb'
+    assert not args_dict['inputs']
+    assert not args_dict['outputs']
 
 
 def test_fail_missing_notebook_parse_arguments():
@@ -276,6 +324,7 @@ def test_fail_missing_directory_parse_arguments():
         bootstrapper.parse_arguments(test_args)
 
 
+@pytest.mark.skip(reason='leaving as informational - not sure worth checking if reqs change')
 def test_requirements_file():
     requirements_file = "etc/tests/resources/test-requirements-elyra.txt"
     correct_number_of_packages = 18

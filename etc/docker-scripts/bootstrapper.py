@@ -119,17 +119,13 @@ def get_file_from_object_storage(client, bucket_name, file_to_get):
     :param bucket_name: bucket where files are located
     :param file_to_get: filename
     """
-    import minio
 
     print('Get file {} from bucket {}'.format(file_to_get, bucket_name))
     object_to_get = get_object_storage_filename(file_to_get)
 
-    try:
-        client.fget_object(bucket_name=bucket_name,
-                           object_name=object_to_get,
-                           file_path=file_to_get)
-    except minio.error.ResponseError as err:
-        print(err)
+    client.fget_object(bucket_name=bucket_name,
+                       object_name=object_to_get,
+                       file_path=file_to_get)
 
 
 def put_file_to_object_storage(client, bucket_name, file_to_upload, object_name=None):
@@ -140,7 +136,6 @@ def put_file_to_object_storage(client, bucket_name, file_to_upload, object_name=
     :param file_to_upload: filename
     :param object_name: remote filename (used to rename)
     """
-    import minio
 
     object_to_upload = object_name
     if not object_to_upload:
@@ -150,13 +145,9 @@ def put_file_to_object_storage(client, bucket_name, file_to_upload, object_name=
 
     object_to_upload = get_object_storage_filename(object_to_upload)
 
-    try:
-        client.fput_object(bucket_name=bucket_name,
-                           object_name=object_to_upload,
-                           file_path=file_to_upload)
-    except minio.error.ResponseError as err:
-        print(err)
-        raise
+    client.fput_object(bucket_name=bucket_name,
+                       object_name=object_to_upload,
+                       file_path=file_to_upload)
 
 
 def main():

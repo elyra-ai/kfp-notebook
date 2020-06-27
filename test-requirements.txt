@@ -1,2 +1,4 @@
 pytest
 mock
+py_essentials
+pytest_virtualenv
