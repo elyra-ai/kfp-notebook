@@ -112,13 +112,13 @@ class NotebookOp(ContainerOp):
                                  )
 
             if self.pipeline_inputs:
-                argument_list.append(['--inputs', self.pipeline_inputs])
+                argument_list.append('--inputs "{}" '.format(self.pipeline_inputs))
 
             if self.pipeline_outputs:
-                argument_list.append(['--outputs', self.pipeline_outputs])
+                argument_list.append('--outputs "{}" '.format(self.pipeline_outputs))
 
             kwargs['command'] = ['sh', '-c']
-            kwargs['arguments'] = argument_list
+            kwargs['arguments'] = "".join(argument_list)
 
         super().__init__(**kwargs)
 
@@ -138,10 +138,10 @@ class NotebookOp(ContainerOp):
         return name_with_extension
 
     def add_pipeline_inputs(self, pipeline_inputs):
-        self.container.args[0] += ("--inputs " + pipeline_inputs)
+        self.container.args[0] += ('--inputs "{}" '.format(pipeline_inputs))
 
     def add_pipeline_outputs(self, pipeline_outputs):
-        self.container.args[0] += ("--outputs " + pipeline_outputs)
+        self.container.args[0] += ('--outputs "{}" '.format(pipeline_outputs))
 
     def add_environment_variable(self, name, value):
         self.container.add_env_variable(V1EnvVar(name=name, value=value))
