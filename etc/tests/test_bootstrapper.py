@@ -53,16 +53,15 @@ def test_main_method(monkeypatch, s3_setup, tmpdir):
                      'notebook': 'etc/tests/resources/test-notebookA.ipynb',
                      'inputs': 'test-file.txt',
                      'outputs': 'test-file-copy.txt'}
-    bucket_name = "test-bucket"
     monkeypatch.setattr(bootstrapper, "parse_arguments", lambda x: argument_dict)
     monkeypatch.setattr(bootstrapper, "package_install", lambda: True)
     monkeypatch.setenv("AWS_ACCESS_KEY_ID", "minioadmin")
     monkeypatch.setenv("AWS_SECRET_ACCESS_KEY", "minioadmin")
 
-    s3_setup.fput_object(bucket_name=bucket_name,
+    s3_setup.fput_object(bucket_name=argument_dict['cos-bucket'],
                          object_name="test-directory/test-file.txt",
                          file_path="README.md")
-    s3_setup.fput_object(bucket_name=bucket_name,
+    s3_setup.fput_object(bucket_name=argument_dict['cos-bucket'],
                          object_name="test-directory/test-archive.tgz",
                          file_path="etc/tests/resources/test-archive.tgz")
 
@@ -81,7 +80,7 @@ def test_main_method(monkeypatch, s3_setup, tmpdir):
         for file in post_run_local_file_list:
             assert os.path.isfile(file)
         for file in post_run_s3_file_list:
-            assert s3_setup.stat_object(bucket_name=bucket_name,
+            assert s3_setup.stat_object(bucket_name=argument_dict['cos-bucket'],
                                         object_name="test-directory/"+file)
 
 
@@ -119,7 +118,6 @@ def test_fail_bad_notebook_main_method(monkeypatch, s3_setup, tmpdir):
                      'notebook': 'etc/tests/resources/test-bad-notebookB.ipynb',
                      'inputs': 'test-file.txt',
                      'outputs': 'test-file.txt'}
-    bucket_name = "test-bucket"
 
     monkeypatch.setattr(bootstrapper, "parse_arguments", lambda x: argument_dict)
     monkeypatch.setattr(bootstrapper, "package_install", lambda: True)
@@ -134,10 +132,10 @@ def test_fail_bad_notebook_main_method(monkeypatch, s3_setup, tmpdir):
     monkeypatch.setenv("AWS_ACCESS_KEY_ID", "minioadmin")
     monkeypatch.setenv("AWS_SECRET_ACCESS_KEY", "minioadmin")
 
-    s3_setup.fput_object(bucket_name=bucket_name,
+    s3_setup.fput_object(bucket_name=argument_dict['cos-bucket'],
                          object_name="test-file.txt",
                          file_path="README.md")
-    s3_setup.fput_object(bucket_name=bucket_name,
+    s3_setup.fput_object(bucket_name=argument_dict['cos-bucket'],
                          object_name="test-bad-archiveB.tgz",
                          file_path="etc/tests/resources/test-bad-archiveB.tgz")
 
@@ -157,12 +155,13 @@ def test_package_installation(monkeypatch, virtualenv):
                        'ansiwrap': '0.7.0',
                        'packaging': '20.4',
                        'text-extensions-for-pandas':
-                       "git+https://github.com/akchinSTC/text-extensions-for-pandas@50d5a1688fb723b5dd8139761830d3419042fee5"}
+                       "git+https://github.com/akchinSTC/"
+                       "text-extensions-for-pandas@50d5a1688fb723b5dd8139761830d3419042fee5"
+                       }
     correct_dict = {'ipykernel': '5.3.0',
                     'ansiwrap': '0.8.4',
                     'packaging': '20.4',
-                    'text-extensions-for-pandas':
-                    "git+https://github.com/akchinSTC/text-extensions-for-pandas@50d5a1688fb723b5dd8139761830d3419042fee5"
+                    'text-extensions-for-pandas': "0.0.1-prealpha"
                     }
 
     mocked_func = mock.Mock(return_value="default", side_effect=[elyra_dict, to_install_dict])
