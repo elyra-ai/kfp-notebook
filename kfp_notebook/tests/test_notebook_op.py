@@ -196,12 +196,12 @@ def test_construct_with_only_pipeline_outputs():
 
 def test_add_pipeline_inputs(notebook_op):
     notebook_op.add_pipeline_inputs("test_input1.txt")
-    assert "--inputs test_input1.txt" in notebook_op.container.args[0]
+    assert '--inputs "test_input1.txt"' in notebook_op.container.args[0]
 
 
 def test_add_pipeline_outputs(notebook_op):
     notebook_op.add_pipeline_outputs("test_output1.txt")
-    assert "--outputs test_output1.txt" in notebook_op.container.args[0]
+    assert '--outputs "test_output1.txt"' in notebook_op.container.args[0]
 
 
 def test_add_env_variable(notebook_op):
