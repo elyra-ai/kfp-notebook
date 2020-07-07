@@ -15,6 +15,7 @@
 #
 import subprocess
 import sys
+import os
 from packaging import version
 
 
@@ -30,6 +31,10 @@ def package_install():
                 print("WARNING: Source package %s found already installed from %s. This may "
                       "conflict with the required version: %s . Skipping..." %
                       (package, current_package_list[package], ver))
+            elif isinstance(version.parse(current_package_list[package]), version.LegacyVersion):
+                print("WARNING: Package %s found with unsupported Legacy version "
+                      "scheme %s already installed. Skipping..." %
+                      (package, current_package_list[package]))
             elif version.parse(ver) > version.parse(current_package_list[package]):
                 print("Updating %s package from version %s to %s..." % (package, current_package_list[package], ver))
                 to_install_list.append(package+'=='+ver)
@@ -61,7 +66,9 @@ def package_list_to_dict(filename):
     return package_dict
 
 
-def parse_arguments():
+def parse_arguments(args):
+    import argparse
+
     print("Parsing Arguments.....")
     parser = argparse.ArgumentParser()
     parser.add_argument('-e', '--cos-endpoint', dest="cos-endpoint", help='Cloud object storage endpoint', required=True)
@@ -71,9 +78,9 @@ def parse_arguments():
     parser.add_argument('-i', '--notebook', dest="notebook", help='Notebook to execute', required=True)
     parser.add_argument('-p', '--outputs', dest="outputs", help='Files to output to object store', required=False)
     parser.add_argument('-l', '--inputs', dest="inputs", help='Files to pull in from parent node', required=False)
-    args = vars(parser.parse_args())
+    parsed_args = vars(parser.parse_args(args))
 
-    return args
+    return parsed_args
 
 
 def convert_notebook_to_html(notebook_file, html_file):
@@ -84,6 +91,9 @@ def convert_notebook_to_html(notebook_file, html_file):
     :param html_file: name of what the html output file should be
     :return: html_file: the converted notebook in html format
     """
+    import nbconvert
+    import nbformat
+
     print("Converting from ipynb to html....")
     nb = nbformat.read(notebook_file, as_version=4)
     html_exporter = nbconvert.HTMLExporter()
@@ -91,6 +101,7 @@ def convert_notebook_to_html(notebook_file, html_file):
     with open(html_file, "w") as f:
         f.write(data)
         f.close()
+
     return html_file
 
 
@@ -116,12 +127,9 @@ def get_file_from_object_storage(client, bucket_name, file_to_get):
     print('Get file {} from bucket {}'.format(file_to_get, bucket_name))
     object_to_get = get_object_storage_filename(file_to_get)
 
-    try:
-        client.fget_object(bucket_name=bucket_name,
-                           object_name=object_to_get,
-                           file_path=file_to_get)
-    except minio.error.ResponseError as err:
-        print(err)
+    client.fget_object(bucket_name=bucket_name,
+                       object_name=object_to_get,
+                       file_path=file_to_get)
 
 
 def put_file_to_object_storage(client, bucket_name, file_to_upload, object_name=None):
@@ -141,32 +149,24 @@ def put_file_to_object_storage(client, bucket_name, file_to_upload, object_name=
 
     object_to_upload = get_object_storage_filename(object_to_upload)
 
-    try:
-        client.fput_object(bucket_name=bucket_name,
-                           object_name=object_to_upload,
-                           file_path=file_to_upload)
-    except minio.error.ResponseError as err:
-        print(err)
-        raise
+    client.fput_object(bucket_name=bucket_name,
+                       object_name=object_to_upload,
+                       file_path=file_to_upload)
 
 
-if __name__ == '__main__':
-
+def main():
     package_install()
     subprocess.check_call([sys.executable, '-m', 'pip', 'freeze'])
 
-    import os
     import minio
-    import argparse
     import papermill
-    import nbconvert
-    import nbformat
 
     from urllib.parse import urlparse
 
-    print("Imports Complete.....")
+    print("Package Installation Complete.....")
 
-    input_params = parse_arguments()
+    global input_params
+    input_params = parse_arguments(sys.argv[1:])
 
     cos_endpoint = urlparse(input_params['cos-endpoint'])
     cos_client = minio.Minio(cos_endpoint.netloc,
@@ -226,3 +226,8 @@ if __name__ == '__main__':
         raise
 
     print("Upload Complete.")
+
+
+if __name__ == '__main__':
+    input_params = {}
+    main()

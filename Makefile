@@ -60,16 +60,15 @@ lint: ## check style with flake8
 	flake8 kfp tests
 
 test: ## run tests quickly with the default Python
-	python setup.py test
+	docker run --name test_minio -d -p 9000:9000 minio/minio server /data
+	coverage run -m pytest -v || $$(docker kill test_minio && docker rm test_minio)
+	docker kill test_minio && docker rm test_minio
 
 test-all: ## run tests on every Python version with tox
 	tox
 
-coverage: ## check code coverage quickly with the default Python
-	coverage run --source notebook setup.py test
+coverage: test ## check code coverage quickly with the default Python
 	coverage report -m
-	coverage html
-	$(BROWSER) htmlcov/index.html
 
 release: dist ## package and upload a release
 	twine upload dist/*

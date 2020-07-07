@@ -69,19 +69,19 @@ class NotebookOp(ContainerOp):
 
         argument_list = []
 
-        if self.bootstrap_script_url is None:
-            self.bootstrap_script_url = 'https://raw.githubusercontent.com/elyra-ai/' \
-                                        'kfp-notebook/v0.10.1/etc/docker-scripts/bootstrapper.py'
+        if not self.bootstrap_script_url:
+            self.bootstrap_script_url = 'https://raw.githubusercontent.com/akchinSTC/' \
+                                        'kfp-notebook/tests/etc/docker-scripts/bootstrapper.py'
 
-        if self.requirements_url is None:
+        if not self.requirements_url:
             self.requirements_url = 'https://raw.githubusercontent.com/elyra-ai/' \
                                     'kfp-notebook/v0.10.1/etc/requirements-elyra.txt'
 
         if 'image' not in kwargs:
-            ValueError("You need to provide an image.")
+            raise ValueError("You need to provide an image.")
 
-        if notebook is None:
-            ValueError("You need to provide a notebook.")
+        if not notebook:
+            raise ValueError("You need to provide a notebook.")
 
         if 'arguments' not in kwargs:
             """ If no arguments are passed, we use our own.
