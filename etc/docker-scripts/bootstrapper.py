@@ -172,7 +172,7 @@ def main():
     cos_client = minio.Minio(cos_endpoint.netloc,
                              access_key=os.getenv('AWS_ACCESS_KEY_ID'),
                              secret_key=os.getenv('AWS_SECRET_ACCESS_KEY'),
-                             secure=False)
+                             secure=cos_endpoint.scheme == 'https')
 
     get_file_from_object_storage(cos_client, input_params['cos-bucket'], input_params['cos-dependencies-archive'])
 
