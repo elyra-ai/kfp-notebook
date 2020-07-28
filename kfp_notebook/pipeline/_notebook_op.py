@@ -18,6 +18,7 @@
 
 from kfp.dsl._container_op import BaseOp, ContainerOp
 from kubernetes.client.models import V1EnvVar
+from typing import Dict, List, Optional
 
 """
 The NotebookOp uses a python script to bootstrap the user supplied image with the required dependencies.
@@ -34,8 +35,9 @@ class NotebookOp(ContainerOp):
                  cos_bucket: str,
                  cos_directory: str,
                  cos_dependencies_archive: str,
-                 pipeline_outputs: str = None,
-                 pipeline_inputs: str = None,
+                 pipeline_outputs: Optional[List[str]] = None,
+                 pipeline_inputs: Optional[List[str]] = None,
+                 pipeline_envs: Optional[Dict[str,str]] = None,
                  requirements_url: str = None,
                  bootstrap_script_url: str = None,
                  **kwargs):
@@ -66,6 +68,7 @@ class NotebookOp(ContainerOp):
         self.requirements_url = requirements_url
         self.pipeline_outputs = pipeline_outputs
         self.pipeline_inputs = pipeline_inputs
+        self.pipeline_envs = pipeline_envs
 
         argument_list = []
 
@@ -111,16 +114,23 @@ class NotebookOp(ContainerOp):
                                     )
                                  )
 
-            if self.pipeline_inputs:
-                argument_list.append('--inputs "{}" '.format(self.pipeline_inputs))
-
-            if self.pipeline_outputs:
-                argument_list.append('--outputs "{}" '.format(self.pipeline_outputs))
-
             kwargs['command'] = ['sh', '-c']
             kwargs['arguments'] = "".join(argument_list)
 
         super().__init__(**kwargs)
+
+        # We must deal with the inputs, outputs and envs after the superclass initialization
+        if self.pipeline_inputs:
+            inputs_str = self._artifact_list_to_str(self.pipeline_inputs)
+            self.container.args[0] += ('--inputs "{}" '.format(inputs_str))
+
+        if self.pipeline_outputs:
+            outputs_str = self._artifact_list_to_str(self.pipeline_outputs)
+            self.container.args[0] += ('--outputs "{}" '.format(outputs_str))
+
+        if self.pipeline_envs:
+            for name,value in self.pipeline_envs.items():
+                self.container.add_env_variable(V1EnvVar(name=name, value=value))
 
     def _get_file_name_with_extension(self, name, extension):
         """ Simple function to construct a string filename
@@ -137,11 +147,8 @@ class NotebookOp(ContainerOp):
 
         return name_with_extension
 
-    def add_pipeline_inputs(self, pipeline_inputs):
-        self.container.args[0] += ('--inputs "{}" '.format(pipeline_inputs))
-
-    def add_pipeline_outputs(self, pipeline_outputs):
-        self.container.args[0] += ('--outputs "{}" '.format(pipeline_outputs))
-
-    def add_environment_variable(self, name, value):
-        self.container.add_env_variable(V1EnvVar(name=name, value=value))
+    def _artifact_list_to_str(self, pipeline_array):
+        trimmed_artifact_list = []
+        for artifact_name in pipeline_array:
+            trimmed_artifact_list.append(artifact_name.strip())
+        return '\0'.join(trimmed_artifact_list)

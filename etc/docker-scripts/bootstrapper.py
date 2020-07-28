@@ -178,7 +178,7 @@ def main():
 
     print('Processing dependencies........')
     if 'inputs' in input_params and input_params['inputs']:
-        input_list = input_params['inputs'].split(",")
+        input_list = input_params['inputs'].split("\0")
         for file in input_list:
             get_file_from_object_storage(cos_client, input_params['cos-bucket'], file.strip())
 
@@ -211,7 +211,7 @@ def main():
 
         print('Processing outputs........')
         if 'outputs' in input_params and input_params['outputs']:
-            output_list = input_params['outputs'].split(",")
+            output_list = input_params['outputs'].split("\0")
             for file in output_list:
                 put_file_to_object_storage(cos_client, input_params['cos-bucket'], file.strip())
     except:
