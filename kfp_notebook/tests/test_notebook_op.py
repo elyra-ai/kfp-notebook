@@ -29,7 +29,7 @@ def notebook_op():
 
 
 def test_fail_without_cos_endpoint():
-    with pytest.raises(TypeError) as error_info:
+    with pytest.raises(TypeError):
         NotebookOp(name="test",
                    notebook="test_notebook.ipynb",
                    cos_bucket="test_bucket",
@@ -39,7 +39,7 @@ def test_fail_without_cos_endpoint():
 
 
 def test_fail_without_cos_bucket():
-    with pytest.raises(TypeError) as error_info:
+    with pytest.raises(TypeError):
         NotebookOp(name="test",
                    notebook="test_notebook.ipynb",
                    cos_endpoint="http://testserver:32525",
@@ -49,7 +49,7 @@ def test_fail_without_cos_bucket():
 
 
 def test_fail_without_cos_directory():
-    with pytest.raises(TypeError) as error_info:
+    with pytest.raises(TypeError):
         NotebookOp(name="test",
                    notebook="test_notebook.ipynb",
                    cos_endpoint="http://testserver:32525",
@@ -59,7 +59,7 @@ def test_fail_without_cos_directory():
 
 
 def test_fail_without_cos_dependencies_archive():
-    with pytest.raises(TypeError) as error_info:
+    with pytest.raises(TypeError):
         NotebookOp(name="test",
                    notebook="test_notebook.ipynb",
                    cos_endpoint="http://testserver:32525",
@@ -76,10 +76,11 @@ def test_fail_without_runtime_image():
                    cos_bucket="test_bucket",
                    cos_directory="test_directory",
                    cos_dependencies_archive="test_archive.tgz")
+    assert "You need to provide an image." == str(error_info.value)
 
 
 def test_fail_without_notebook():
-    with pytest.raises(TypeError) as error_info:
+    with pytest.raises(TypeError):
         NotebookOp(name="test",
                    cos_endpoint="http://testserver:32525",
                    cos_bucket="test_bucket",
@@ -89,7 +90,7 @@ def test_fail_without_notebook():
 
 
 def test_fail_without_name():
-    with pytest.raises(TypeError) as error_info:
+    with pytest.raises(TypeError):
         NotebookOp(notebook="test_notebook.ipynb",
                    cos_endpoint="http://testserver:32525",
                    cos_bucket="test_bucket",
@@ -99,7 +100,7 @@ def test_fail_without_name():
 
 
 def test_fail_with_empty_string_as_name():
-    with pytest.raises(ValueError) as error_info:
+    with pytest.raises(ValueError):
         NotebookOp(name="",
                    notebook="test_notebook.ipynb",
                    cos_endpoint="http://testserver:32525",
@@ -110,7 +111,7 @@ def test_fail_with_empty_string_as_name():
 
 
 def test_fail_with_empty_string_as_notebook():
-    with pytest.raises(Exception) as error_info:
+    with pytest.raises(ValueError) as error_info:
         NotebookOp(name="test",
                    notebook="",
                    cos_endpoint="http://testserver:32525",
@@ -118,6 +119,7 @@ def test_fail_with_empty_string_as_notebook():
                    cos_directory="test_directory",
                    cos_dependencies_archive="test_archive.tgz",
                    image="test/image:dev")
+    assert "You need to provide a notebook." == str(error_info.value)
 
 
 @pytest.mark.skip(reason="not sure if we should even test this")
@@ -163,14 +165,14 @@ def test_construct_with_both_pipeline_inputs_and_outputs():
                              cos_bucket="test_bucket",
                              cos_directory="test_directory",
                              cos_dependencies_archive="test_archive.tgz",
-                             pipeline_inputs=['test_input1.txt','test_input2.txt'],
-                             pipeline_outputs=['test_output1.txt','test_output2.txt'],
+                             pipeline_inputs=['test_input1.txt', 'test_input2.txt'],
+                             pipeline_outputs=['test_output1.txt', 'test_output2.txt'],
                              image="test/image:dev")
-    assert notebook_op.pipeline_inputs == ['test_input1.txt','test_input2.txt']
-    assert notebook_op.pipeline_outputs == ['test_output1.txt','test_output2.txt']
+    assert notebook_op.pipeline_inputs == ['test_input1.txt', 'test_input2.txt']
+    assert notebook_op.pipeline_outputs == ['test_output1.txt', 'test_output2.txt']
 
-    assert '--inputs "test_input1.txt\0test_input2.txt"' in notebook_op.container.args[0]
-    assert '--outputs "test_output1.txt\0test_output2.txt"' in notebook_op.container.args[0]
+    assert '--inputs "test_input1.txt;test_input2.txt"' in notebook_op.container.args[0]
+    assert '--outputs "test_output1.txt;test_output2.txt"' in notebook_op.container.args[0]
 
 
 def test_construct_with_only_pipeline_inputs():
@@ -180,10 +182,25 @@ def test_construct_with_only_pipeline_inputs():
                              cos_bucket="test_bucket",
                              cos_directory="test_directory",
                              cos_dependencies_archive="test_archive.tgz",
-                             pipeline_inputs=['test_input1.txt','test,input2.txt'],
+                             pipeline_inputs=['test_input1.txt', 'test,input2.txt'],
+                             pipeline_outputs=[],
                              image="test/image:dev")
-    assert notebook_op.pipeline_inputs == ['test_input1.txt','test,input2.txt']
-    assert '--inputs "test_input1.txt\0test,input2.txt"' in notebook_op.container.args[0]
+    assert notebook_op.pipeline_inputs == ['test_input1.txt', 'test,input2.txt']
+    assert '--inputs "test_input1.txt;test,input2.txt"' in notebook_op.container.args[0]
+
+
+def test_construct_with_bad_pipeline_inputs():
+    with pytest.raises(ValueError) as error_info:
+        NotebookOp(name="test",
+                   notebook="test_notebook.ipynb",
+                   cos_endpoint="http://testserver:32525",
+                   cos_bucket="test_bucket",
+                   cos_directory="test_directory",
+                   cos_dependencies_archive="test_archive.tgz",
+                   pipeline_inputs=['test_input1.txt', 'test;input2.txt'],
+                   pipeline_outputs=[],
+                   image="test/image:dev")
+    assert "Illegal character (;) found in filename 'test;input2.txt'." == str(error_info.value)
 
 
 def test_construct_with_only_pipeline_outputs():
@@ -193,10 +210,24 @@ def test_construct_with_only_pipeline_outputs():
                              cos_bucket="test_bucket",
                              cos_directory="test_directory",
                              cos_dependencies_archive="test_archive.tgz",
-                             pipeline_outputs=['test_output1.txt','test,output2.txt'],
+                             pipeline_outputs=['test_output1.txt', 'test,output2.txt'],
+                             pipeline_envs={},
                              image="test/image:dev")
-    assert notebook_op.pipeline_outputs == ['test_output1.txt','test,output2.txt']
-    assert '--outputs "test_output1.txt\0test,output2.txt"' in notebook_op.container.args[0]
+    assert notebook_op.pipeline_outputs == ['test_output1.txt', 'test,output2.txt']
+    assert '--outputs "test_output1.txt;test,output2.txt"' in notebook_op.container.args[0]
+
+
+def test_construct_with_bad_pipeline_outputs():
+    with pytest.raises(ValueError) as error_info:
+        NotebookOp(name="test",
+                   notebook="test_notebook.ipynb",
+                   cos_endpoint="http://testserver:32525",
+                   cos_bucket="test_bucket",
+                   cos_directory="test_directory",
+                   cos_dependencies_archive="test_archive.tgz",
+                   pipeline_outputs=['test_output1.txt', 'test;output2.txt'],
+                   image="test/image:dev")
+    assert "Illegal character (;) found in filename 'test;output2.txt'." == str(error_info.value)
 
 
 def test_construct_with_env_variables():
