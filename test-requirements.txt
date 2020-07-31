@@ -1,4 +1,9 @@
-pytest
+ipython
+minio
 mock
+notebook
+nbconvert
+papermill
+pytest
 py_essentials
 pytest_virtualenv
