@@ -28,6 +28,15 @@ sys.path.append('etc/docker-scripts/')
 import bootstrapper
 
 
+# To run this test from an IDE:
+# 1. set PYTHONPATH='`path-to-repo`/etc/docker-scripts' and working directory to `path-to-repo`
+# 2. Manually launch test_minio container: docker run --name test_minio -d -p 9000:9000 minio/minio server /data
+#    (this is located in Makefile)
+#
+# NOTE: Any changes to etc/tests/resources/test-notebookA.ipynb require an
+# update of etc/tests/resources/test-archive.tgz as well as an update to the
+# SHA256 hash in test_convert_notebook_to_html() below.
+
 @pytest.fixture(scope='function')
 def s3_setup():
     bucket_name = "test-bucket"
@@ -51,8 +60,8 @@ def test_main_method(monkeypatch, s3_setup, tmpdir):
                      'cos-directory': 'test-directory',
                      'cos-dependencies-archive': 'test-archive.tgz',
                      'notebook': 'etc/tests/resources/test-notebookA.ipynb',
-                     'inputs': 'test-file.txt',
-                     'outputs': 'test-file-copy.txt'}
+                     'inputs': 'test-file.txt;test,file.txt',
+                     'outputs': 'test-file-copy.txt;test,file-copy.txt'}
     monkeypatch.setattr(bootstrapper, "parse_arguments", lambda x: argument_dict)
     monkeypatch.setattr(bootstrapper, "package_install", lambda: True)
     monkeypatch.setenv("AWS_ACCESS_KEY_ID", "minioadmin")
@@ -60,28 +69,34 @@ def test_main_method(monkeypatch, s3_setup, tmpdir):
 
     s3_setup.fput_object(bucket_name=argument_dict['cos-bucket'],
                          object_name="test-directory/test-file.txt",
-                         file_path="README.md")
+                         file_path="etc/tests/resources/test-requirements-elyra.txt")
+    s3_setup.fput_object(bucket_name=argument_dict['cos-bucket'],
+                         object_name="test-directory/test,file.txt",
+                         file_path="etc/tests/resources/test-bad-requirements-elyra.txt")
     s3_setup.fput_object(bucket_name=argument_dict['cos-bucket'],
                          object_name="test-directory/test-archive.tgz",
                          file_path="etc/tests/resources/test-archive.tgz")
 
     with tmpdir.as_cwd():
         bootstrapper.main()
-        post_run_local_file_list = ['test-archive.tgz',
-                                    'test-file.txt',
-                                    'test-file-copy.txt',
-                                    'test-notebookA-output.ipynb',
-                                    'test-notebookA.html']
-        post_run_s3_file_list = ['test-archive.tgz',
-                                 'test-file.txt',
-                                 'test-file-copy.txt',
-                                 'test-notebookA.ipynb',
-                                 'test-notebookA.html']
-        for file in post_run_local_file_list:
+        test_file_list = ['test-archive.tgz',
+                          'test-file.txt',
+                          'test,file.txt',
+                          'test-file-copy.txt',
+                          'test,file-copy.txt',
+                          'test-notebookA.ipynb',
+                          'test-notebookA-output.ipynb',
+                          'test-notebookA.html']
+        # Ensure working directory has all the files.
+        for file in test_file_list:
             assert os.path.isfile(file)
-        for file in post_run_s3_file_list:
-            assert s3_setup.stat_object(bucket_name=argument_dict['cos-bucket'],
-                                        object_name="test-directory/"+file)
+        # Ensure upload directory has all the files EXCEPT the output notebook
+        # since it was it is uploaded as the input notebook (test-notebookA.ipynb)
+        # (which is included in the archive at start).
+        for file in test_file_list:
+            if file != 'test-notebookA-output.ipynb':
+                assert s3_setup.stat_object(bucket_name=argument_dict['cos-bucket'],
+                                            object_name="test-directory/"+file)
 
 
 def test_fail_bad_endpoint_main_method(monkeypatch, tmpdir):
@@ -195,7 +210,7 @@ def test_package_installation(monkeypatch, virtualenv):
 def test_convert_notebook_to_html(tmpdir):
     notebook_file = os.getcwd() + "/etc/tests/resources/test-notebookA.ipynb"
     notebook_output_html_file = "test-notebookA.html"
-    html_sha256 = 'dfff0325b8551b75a76fb3357bee60694a0e71b8fc8438c6382ce06777b14498'
+    html_sha256 = '7b375914a055f15791f0f68a3f336a12d73adca6893e45081920bd28dda894c3'
     with tmpdir.as_cwd():
         bootstrapper.convert_notebook_to_html(notebook_file, notebook_output_html_file)
 
@@ -276,7 +291,7 @@ def test_parse_arguments():
     test_args = ['-e', 'http://test.me.now',
                  '-d', 'test-directory',
                  '-t', 'test-archive.tgz',
-                 '-i', 'test-notebook.ipynb',
+                 '-n', 'test-notebook.ipynb',
                  '-b', 'test-bucket']
     args_dict = bootstrapper.parse_arguments(test_args)
 
@@ -301,7 +316,7 @@ def test_fail_missing_notebook_parse_arguments():
 def test_fail_missing_endpoint_parse_arguments():
     test_args = ['-d', 'test-directory',
                  '-t', 'test-archive.tgz',
-                 '-i', 'test-notebook.ipynb',
+                 '-n', 'test-notebook.ipynb',
                  '-b', 'test-bucket']
     with pytest.raises(SystemExit):
         bootstrapper.parse_arguments(test_args)
@@ -310,7 +325,7 @@ def test_fail_missing_endpoint_parse_arguments():
 def test_fail_missing_archive_parse_arguments():
     test_args = ['-e', 'http://test.me.now',
                  '-d', 'test-directory',
-                 '-i', 'test-notebook.ipynb',
+                 '-n', 'test-notebook.ipynb',
                  '-b', 'test-bucket']
     with pytest.raises(SystemExit):
         bootstrapper.parse_arguments(test_args)
@@ -320,7 +335,7 @@ def test_fail_missing_bucket_parse_arguments():
     test_args = ['-e', 'http://test.me.now',
                  '-d', 'test-directory',
                  '-t', 'test-archive.tgz',
-                 '-i', 'test-notebook.ipynb']
+                 '-n', 'test-notebook.ipynb']
     with pytest.raises(SystemExit):
         bootstrapper.parse_arguments(test_args)
 
@@ -328,7 +343,7 @@ def test_fail_missing_bucket_parse_arguments():
 def test_fail_missing_directory_parse_arguments():
     test_args = ['-e', 'http://test.me.now',
                  '-t', 'test-archive.tgz',
-                 '-i', 'test-notebook.ipynb',
+                 '-n', 'test-notebook.ipynb',
                  '-b', 'test-bucket']
     with pytest.raises(SystemExit):
         bootstrapper.parse_arguments(test_args)

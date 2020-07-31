@@ -15,15 +15,19 @@
 # limitations under the License.
 #
 
-
-from kfp.dsl._container_op import BaseOp, ContainerOp
+from kfp.dsl._container_op import ContainerOp
 from kubernetes.client.models import V1EnvVar
+from typing import Dict, List, Optional
 
 """
 The NotebookOp uses a python script to bootstrap the user supplied image with the required dependencies.
 In order for the script run properly, the image used, must at a minimum, have the 'curl' utility available
 and have python3
 """
+
+# Inputs and Outputs separator character.  If updated,
+# same-named variable in bootstrapper.py must be updated!
+INOUT_SEPARATOR= ';'
 
 
 class NotebookOp(ContainerOp):
@@ -34,8 +38,9 @@ class NotebookOp(ContainerOp):
                  cos_bucket: str,
                  cos_directory: str,
                  cos_dependencies_archive: str,
-                 pipeline_outputs: str = None,
-                 pipeline_inputs: str = None,
+                 pipeline_outputs: Optional[List[str]] = None,
+                 pipeline_inputs: Optional[List[str]] = None,
+                 pipeline_envs: Optional[Dict[str,str]] = None,
                  requirements_url: str = None,
                  bootstrap_script_url: str = None,
                  **kwargs):
@@ -66,6 +71,7 @@ class NotebookOp(ContainerOp):
         self.requirements_url = requirements_url
         self.pipeline_outputs = pipeline_outputs
         self.pipeline_inputs = pipeline_inputs
+        self.pipeline_envs = pipeline_envs
 
         argument_list = []
 
@@ -110,17 +116,24 @@ class NotebookOp(ContainerOp):
                                     notebook=self.notebook
                                     )
                                  )
-
             if self.pipeline_inputs:
-                argument_list.append('--inputs "{}" '.format(self.pipeline_inputs))
+                inputs_str = self._artifact_list_to_str(self.pipeline_inputs)
+                argument_list.append('--inputs "{}" '.format(inputs_str))
 
             if self.pipeline_outputs:
-                argument_list.append('--outputs "{}" '.format(self.pipeline_outputs))
+                outputs_str = self._artifact_list_to_str(self.pipeline_outputs)
+                argument_list.append('--outputs "{}" '.format(outputs_str))
 
             kwargs['command'] = ['sh', '-c']
             kwargs['arguments'] = "".join(argument_list)
 
         super().__init__(**kwargs)
+
+        # We must deal with the envs after the superclass initialization since these amend the
+        # container attribute that isn't available until now.
+        if self.pipeline_envs:
+            for key,value in self.pipeline_envs.items():  # Convert dict entries to format kfp needs
+                self.container.add_env_variable(V1EnvVar(name=key, value=value))
 
     def _get_file_name_with_extension(self, name, extension):
         """ Simple function to construct a string filename
@@ -137,11 +150,10 @@ class NotebookOp(ContainerOp):
 
         return name_with_extension
 
-    def add_pipeline_inputs(self, pipeline_inputs):
-        self.container.args[0] += ('--inputs "{}" '.format(pipeline_inputs))
-
-    def add_pipeline_outputs(self, pipeline_outputs):
-        self.container.args[0] += ('--outputs "{}" '.format(pipeline_outputs))
-
-    def add_environment_variable(self, name, value):
-        self.container.add_env_variable(V1EnvVar(name=name, value=value))
+    def _artifact_list_to_str(self, pipeline_array):
+        trimmed_artifact_list = []
+        for artifact_name in pipeline_array:
+            if INOUT_SEPARATOR in artifact_name:  # if INOUT_SEPARATOR is in name, throw since this is our separator
+                raise ValueError("Illegal character ({}) found in filename '{}'.".format(INOUT_SEPARATOR, artifact_name))
+            trimmed_artifact_list.append(artifact_name.strip())
+        return INOUT_SEPARATOR.join(trimmed_artifact_list)
