@@ -59,8 +59,12 @@ clean-test:
 lint: ## check style with flake8
 	flake8 kfp tests
 
-test: ## run tests quickly with the default Python
+test-dependencies:
+	@pip install -q -r test-requirements.txt
+
+test: test-dependencies ## run tests quickly with the default Python
 	docker run --name test_minio -d -p 9000:9000 minio/minio server /data
+	docker logs test_minio
 	coverage run -m pytest -v || $$(docker kill test_minio && docker rm test_minio)
 	docker kill test_minio && docker rm test_minio
 

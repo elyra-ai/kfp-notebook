@@ -222,7 +222,9 @@ def test_fail_convert_notebook_to_html(tmpdir):
     notebook_file = os.getcwd() + "/etc/tests/resources/test-bad-notebookA.ipynb"
     notebook_output_html_file = "bad-notebookA.html"
     with tmpdir.as_cwd():
-        with pytest.raises(nbformat.validator.NotebookValidationError):
+        # Recent versions raising typeError due to #1130
+        # https://github.com/jupyter/nbconvert/pull/1130
+        with pytest.raises( (TypeError, nbformat.validator.NotebookValidationError) ):
             bootstrapper.convert_notebook_to_html(notebook_file, notebook_output_html_file)
 
 
