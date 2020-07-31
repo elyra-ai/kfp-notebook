@@ -1,8 +1,7 @@
 name: Elyra KFP Notebook Operator Tests
 on:
   push:
-    branches:
-    - master
+    branches: '*'
   pull_request:
     branches: '*'
 
