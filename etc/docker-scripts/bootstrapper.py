@@ -201,6 +201,7 @@ def main():
           .format(notebook, notebook_output))
 
     try:
+        assert os.path.isfile(notebook), "File '{}' is invalid".format(notebook)
         papermill.execute_notebook(
             notebook,
             notebook_output,
