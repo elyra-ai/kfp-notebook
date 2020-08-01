@@ -15,7 +15,10 @@
 # limitations under the License.
 #
 
+import os
+
 from kfp.dsl._container_op import ContainerOp
+from kfp_notebook import __version__
 from kubernetes.client.models import V1EnvVar
 from typing import Dict, List, Optional
 
@@ -28,6 +31,9 @@ and have python3
 # Inputs and Outputs separator character.  If updated,
 # same-named variable in bootstrapper.py must be updated!
 INOUT_SEPARATOR= ';'
+
+KFP_NOTEBOOK_ORG = os.getenv("KFP_NOTEBOOK_ORG", "elyra-ai")
+KFP_NOTEBOOK_BRANCH = os.getenv("KFP_NOTEBOOK_BRANCH", "master" if 'dev' in __version__ else "v" + __version__)
 
 
 class NotebookOp(ContainerOp):
@@ -76,12 +82,14 @@ class NotebookOp(ContainerOp):
         argument_list = []
 
         if not self.bootstrap_script_url:
-            self.bootstrap_script_url = 'https://raw.githubusercontent.com/elyra-ai/' \
-                                        'kfp-notebook/v0.10.3/etc/docker-scripts/bootstrapper.py'
+            self.bootstrap_script_url = 'https://raw.githubusercontent.com/{org}/' \
+                                        'kfp-notebook/{branch}/etc/docker-scripts/bootstrapper.py'.\
+                format(org=KFP_NOTEBOOK_ORG, branch=KFP_NOTEBOOK_BRANCH)
 
         if not self.requirements_url:
-            self.requirements_url = 'https://raw.githubusercontent.com/elyra-ai/' \
-                                    'kfp-notebook/v0.10.3/etc/requirements-elyra.txt'
+            self.requirements_url = 'https://raw.githubusercontent.com/{org}/' \
+                                    'kfp-notebook/{branch}/etc/requirements-elyra.txt'.\
+                format(org=KFP_NOTEBOOK_ORG, branch=KFP_NOTEBOOK_BRANCH)
 
         if 'image' not in kwargs:
             raise ValueError("You need to provide an image.")
