@@ -175,6 +175,23 @@ def test_construct_with_both_pipeline_inputs_and_outputs():
     assert '--outputs "test_output1.txt;test_output2.txt"' in notebook_op.container.args[0]
 
 
+def test_construct_wiildcard_outputs():
+    notebook_op = NotebookOp(name="test",
+                             notebook="test_notebook.ipynb",
+                             cos_endpoint="http://testserver:32525",
+                             cos_bucket="test_bucket",
+                             cos_directory="test_directory",
+                             cos_dependencies_archive="test_archive.tgz",
+                             pipeline_inputs=['test_input1.txt', 'test_input2.txt'],
+                             pipeline_outputs=['test_out*', 'foo.tar'],
+                             image="test/image:dev")
+    assert notebook_op.pipeline_inputs == ['test_input1.txt', 'test_input2.txt']
+    assert notebook_op.pipeline_outputs == ['test_out*', 'foo.tar']
+
+    assert '--inputs "test_input1.txt;test_input2.txt"' in notebook_op.container.args[0]
+    assert '--outputs "test_out*;foo.tar"' in notebook_op.container.args[0]
+
+
 def test_construct_with_only_pipeline_inputs():
     notebook_op = NotebookOp(name="test",
                              notebook="test_notebook.ipynb",

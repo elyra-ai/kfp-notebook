@@ -34,8 +34,14 @@ import bootstrapper
 #    (this is located in Makefile)
 #
 # NOTE: Any changes to etc/tests/resources/test-notebookA.ipynb require an
-# update of etc/tests/resources/test-archive.tgz as well as an update to the
-# SHA256 hash in test_convert_notebook_to_html() below.
+# update of etc/tests/resources/test-archive.tgz  using the command below:
+# tar -cvzf test-archive.tgz test-notebookA.ipynb
+#
+# There is also a need to update the following SHA256 hash used in
+# test_convert_notebook_to_html() below.
+#
+
+HTML_SHA256 = '0f3f3dcd3660f49776bceb46bdddf1420498a8544d4066c5341c14d014743c0d'
 
 @pytest.fixture(scope='function')
 def s3_setup():
@@ -53,19 +59,13 @@ def s3_setup():
         cos_client.remove_object(bucket_name, file.object_name)
     cos_client.remove_bucket(bucket_name)
 
-
-def test_main_method(monkeypatch, s3_setup, tmpdir):
-    argument_dict = {'cos-endpoint': 'http://127.0.0.1:9000',
-                     'cos-bucket': 'test-bucket',
-                     'cos-directory': 'test-directory',
-                     'cos-dependencies-archive': 'test-archive.tgz',
-                     'notebook': 'etc/tests/resources/test-notebookA.ipynb',
-                     'inputs': 'test-file.txt;test,file.txt',
-                     'outputs': 'test-file-copy.txt;test,file-copy.txt'}
+def main_method_setup_execution(monkeypatch, s3_setup, tmpdir, argument_dict):
+    """Primary body for main method testing..."""
     monkeypatch.setattr(bootstrapper, "parse_arguments", lambda x: argument_dict)
     monkeypatch.setattr(bootstrapper, "package_install", lambda: True)
     monkeypatch.setenv("AWS_ACCESS_KEY_ID", "minioadmin")
     monkeypatch.setenv("AWS_SECRET_ACCESS_KEY", "minioadmin")
+    monkeypatch.setenv("TEST_ENV_VAR1", "test_env_var1")
 
     s3_setup.fput_object(bucket_name=argument_dict['cos-bucket'],
                          object_name="test-directory/test-file.txt",
@@ -82,8 +82,8 @@ def test_main_method(monkeypatch, s3_setup, tmpdir):
         test_file_list = ['test-archive.tgz',
                           'test-file.txt',
                           'test,file.txt',
-                          'test-file-copy.txt',
-                          'test,file-copy.txt',
+                          'test-file/test-file-copy.txt',
+                          'test-file/test,file/test,file-copy.txt',
                           'test-notebookA.ipynb',
                           'test-notebookA-output.ipynb',
                           'test-notebookA.html']
@@ -97,6 +97,43 @@ def test_main_method(monkeypatch, s3_setup, tmpdir):
             if file != 'test-notebookA-output.ipynb':
                 assert s3_setup.stat_object(bucket_name=argument_dict['cos-bucket'],
                                             object_name="test-directory/"+file)
+                if file == "test-notebookA.html":
+                    with open("test-notebookA.html") as html_file:
+                        assert 'TEST_ENV_VAR1: test_env_var1' in html_file.read()
+
+
+def test_main_method(monkeypatch, s3_setup, tmpdir):
+    argument_dict = {'cos-endpoint': 'http://127.0.0.1:9000',
+                     'cos-bucket': 'test-bucket',
+                     'cos-directory': 'test-directory',
+                     'cos-dependencies-archive': 'test-archive.tgz',
+                     'notebook': 'etc/tests/resources/test-notebookA.ipynb',
+                     'inputs': 'test-file.txt;test,file.txt',
+                     'outputs': 'test-file/test-file-copy.txt;test-file/test,file/test,file-copy.txt'}
+    main_method_setup_execution(monkeypatch, s3_setup, tmpdir, argument_dict)
+
+
+def test_main_method_with_wildcard_outputs(monkeypatch, s3_setup, tmpdir):
+    argument_dict = {'cos-endpoint': 'http://127.0.0.1:9000',
+                     'cos-bucket': 'test-bucket',
+                     'cos-directory': 'test-directory',
+                     'cos-dependencies-archive': 'test-archive.tgz',
+                     'notebook': 'etc/tests/resources/test-notebookA.ipynb',
+                     'inputs': 'test-file.txt;test,file.txt',
+                     'outputs': 'test-file/*'}
+    main_method_setup_execution(monkeypatch, s3_setup, tmpdir, argument_dict)
+
+
+def test_main_method_with_dir_outputs(monkeypatch, s3_setup, tmpdir):
+    argument_dict = {'cos-endpoint': 'http://127.0.0.1:9000',
+                     'cos-bucket': 'test-bucket',
+                     'cos-directory': 'test-directory',
+                     'cos-dependencies-archive': 'test-archive.tgz',
+                     'notebook': 'etc/tests/resources/test-notebookA.ipynb',
+                     'inputs': 'test-file.txt;test,file.txt',
+                     'outputs': 'test-file'}  # this is the directory that contains the outputs
+    main_method_setup_execution(monkeypatch, s3_setup, tmpdir, argument_dict)
+
 
 
 def test_fail_bad_endpoint_main_method(monkeypatch, tmpdir):
@@ -106,7 +143,7 @@ def test_fail_bad_endpoint_main_method(monkeypatch, tmpdir):
                      'cos-dependencies-archive': 'test-archive.tgz',
                      'notebook': 'etc/tests/resources/test-notebookA.ipynb',
                      'inputs': 'test-file.txt',
-                     'outputs': 'test-file.txt'}
+                     'outputs': 'test-file/test-file-copy.txt'}
     monkeypatch.setattr(bootstrapper, "parse_arguments", lambda x: argument_dict)
     monkeypatch.setattr(bootstrapper, "package_install", lambda: True)
 
@@ -132,7 +169,7 @@ def test_fail_bad_notebook_main_method(monkeypatch, s3_setup, tmpdir):
                      'cos-dependencies-archive': 'test-bad-archiveB.tgz',
                      'notebook': 'etc/tests/resources/test-bad-notebookB.ipynb',
                      'inputs': 'test-file.txt',
-                     'outputs': 'test-file.txt'}
+                     'outputs': 'test-file/test-copy-file.txt'}
 
     monkeypatch.setattr(bootstrapper, "parse_arguments", lambda x: argument_dict)
     monkeypatch.setattr(bootstrapper, "package_install", lambda: True)
@@ -215,7 +252,7 @@ def test_convert_notebook_to_html(tmpdir):
         bootstrapper.convert_notebook_to_html(notebook_file, notebook_output_html_file)
 
         assert os.path.isfile(notebook_output_html_file)
-        assert hs.fileChecksum(notebook_output_html_file, "sha256") == html_sha256
+        assert hs.fileChecksum(notebook_output_html_file, "sha256") == HTML_SHA256
 
 
 def test_fail_convert_notebook_to_html(tmpdir):

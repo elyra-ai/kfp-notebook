@@ -62,11 +62,16 @@ lint: ## check style with flake8
 test-dependencies:
 	@pip install -q -r test-requirements.txt
 
-test: test-dependencies ## run tests quickly with the default Python
-	docker run --name test_minio -d -p 9000:9000 minio/minio server /data
+test: test-dependencies test_start_minio ## run tests quickly with the default Python
+	coverage run -m pytest -v || $$(make stop_test_minio)
 	docker logs test_minio
-	coverage run -m pytest -v || $$(docker kill test_minio && docker rm test_minio)
-	docker kill test_minio && docker rm test_minio
+	@make test_stop_minio
+
+test_start_minio: ## start test_minio container (dev testing)
+	docker run --name test_minio -d -p 9000:9000 minio/minio server /data
+
+test_stop_minio: ## stop test_minio container (dev testing)
+	@docker rm -f test_minio
 
 test-all: ## run tests on every Python version with tox
 	tox

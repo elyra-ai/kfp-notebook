@@ -13,9 +13,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+import glob
+import os
 import subprocess
 import sys
-import os
+
 from packaging import version
 
 # Inputs and Outputs separator character.  If updated,
@@ -158,6 +160,26 @@ def put_file_to_object_storage(client, bucket_name, file_to_upload, object_name=
                        file_path=file_to_upload)
 
 
+def has_wildcard(filename):
+    wildcards = ['*', '?']
+    return bool(any(c in filename for c in wildcards))
+
+
+def process_output_file(cos_client, bucket, output_file):
+    """Puts the file to object storage.  Handles wildcards and directories. """
+
+    matched_files = [output_file]
+    if has_wildcard(output_file):  # explode the wildcarded file
+        matched_files = glob.glob(output_file)
+
+    for matched_file in matched_files:
+        if os.path.isdir(matched_file):
+            for file in os.listdir(matched_file):
+                process_output_file(cos_client, bucket, os.path.join(matched_file, file))
+        else:
+            put_file_to_object_storage(cos_client, bucket, matched_file)
+
+
 def main():
     package_install()
     subprocess.check_call([sys.executable, '-m', 'pip', 'freeze'])
@@ -218,7 +240,7 @@ def main():
         if 'outputs' in input_params and input_params['outputs']:
             output_list = input_params['outputs'].split(INOUT_SEPARATOR)
             for file in output_list:
-                put_file_to_object_storage(cos_client, input_params['cos-bucket'], file.strip())
+                process_output_file(cos_client, input_params['cos-bucket'], file.strip())
     except:
         # log in case of errors
         print("Unexpected error:", sys.exc_info()[0])
