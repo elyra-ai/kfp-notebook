@@ -86,7 +86,7 @@ def parse_arguments(args):
     parser.add_argument('-n', '--notebook', dest="notebook", help='Notebook to execute', required=True)
     parser.add_argument('-o', '--outputs', dest="outputs", help='Files to output to object store', required=False)
     parser.add_argument('-i', '--inputs', dest="inputs", help='Files to pull in from parent node', required=False)
-    parser.add_argument('-r', '--user-volume-path', dest="user-volume-path", help='Directory in Volume to install python libraries into', required=False)
+    parser.add_argument('-p', '--user-volume-path', dest="user-volume-path", help='Directory in Volume to install python libraries into', required=False)
     parsed_args = vars(parser.parse_args(args))
 
     return parsed_args

@@ -150,7 +150,7 @@ class NotebookOp(ContainerOp):
                 argument_list.append('--outputs "{}" '.format(outputs_str))
 
             if self.emptydir_volume_size:
-                argument_list.append(('--user-volume-path "{}" '.format(self.python_user_lib_path)))
+                argument_list.append('--user-volume-path "{}" '.format(self.python_user_lib_path))
 
             kwargs['command'] = ['sh', '-c']
             kwargs['arguments'] = "".join(argument_list)
