@@ -74,7 +74,9 @@ class NotebookOp(ContainerOp):
         self.cos_bucket = cos_bucket
         self.cos_directory = cos_directory
         self.cos_dependencies_archive = cos_dependencies_archive
-        self.container_work_dir = "jupyter-work-dir"
+        self.container_work_dir_root_path = "./"
+        self.container_work_dir_name = "jupyter-work-dir"
+        self.container_work_dir = self.container_work_dir_root_path + self.container_work_dir_name
         self.bootstrap_script_url = bootstrap_script_url
         self.requirements_url = requirements_url
         self.pipeline_outputs = pipeline_outputs
@@ -92,7 +94,8 @@ class NotebookOp(ContainerOp):
         self.python_user_lib_path_target = ''
 
         if self.emptydir_volume_size:
-            self.container_work_dir = "/mnt/" + self.container_work_dir
+            self.container_work_dir_root_path = "/mnt/"
+            self.container_work_dir = self.container_work_dir_root_path + self.container_work_dir_name
             self.python_user_lib_path = self.container_work_dir + '/python3.6/'
             self.python_user_lib_path_target = '--target=' + self.python_user_lib_path
 
@@ -123,7 +126,7 @@ class NotebookOp(ContainerOp):
                                  'curl -H "Cache-Control: no-cache" -L {reqs_url} --output requirements-elyra.txt && '
                                  'python -m pip install {python_user_lib_path_target} packaging && '
                                  'python -m pip freeze > requirements-current.txt && '
-                                 'python {container_work_dir}/bootstrapper.py '
+                                 'python bootstrapper.py '
                                  '--cos-endpoint {cos_endpoint} '
                                  '--cos-bucket {cos_bucket} '
                                  '--cos-directory "{cos_directory}" '

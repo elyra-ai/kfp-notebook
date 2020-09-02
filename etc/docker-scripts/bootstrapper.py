@@ -52,7 +52,7 @@ def package_install():
             to_install_list.append(package+'=='+ver)
 
     if to_install_list:
-        if 'user-volume-path' in input_params:
+        if input_params['user-volume-path']:
             to_install_list.insert(0, '--target=' + input_params['user-volume-path'])
         subprocess.check_call([sys.executable, '-m', 'pip', 'install'] + to_install_list)
 
