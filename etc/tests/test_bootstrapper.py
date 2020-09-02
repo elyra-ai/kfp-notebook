@@ -381,7 +381,7 @@ def test_parse_arguments():
                  '-t', 'test-archive.tgz',
                  '-n', 'test-notebook.ipynb',
                  '-b', 'test-bucket',
-                 '-f', '/tmp/lib']
+                 '-p', '/tmp/lib']
     args_dict = bootstrapper.parse_arguments(test_args)
 
     assert args_dict['cos-endpoint'] == 'http://test.me.now'
