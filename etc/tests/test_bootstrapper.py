@@ -213,7 +213,8 @@ def test_package_installation(monkeypatch, virtualenv):
     correct_dict = {'ipykernel': '5.3.0',
                     'ansiwrap': '0.8.4',
                     'packaging': '20.4',
-                    'text-extensions-for-pandas': "0.0.1-prealpha"
+                    'text-extensions-for-pandas':
+                    "git+https://github.com/akchinSTC/text-extensions-for-pandas@50d5a1688fb723b5dd8139761830d3419042fee5"
                     }
 
     mocked_func = mock.Mock(return_value="default", side_effect=[elyra_dict, to_install_dict])
@@ -231,6 +232,56 @@ def test_package_installation(monkeypatch, virtualenv):
     bootstrapper.package_install()
     virtual_env_dict = {}
     output = virtualenv.run("python -m pip freeze", capture=True)
+    for line in output.strip().split('\n'):
+        if " @ " in line:
+            package_name, package_version = line.strip('\n').split(sep=" @ ")
+        elif "===" in line:
+            package_name, package_version = line.strip('\n').split(sep="===")
+        else:
+            package_name, package_version = line.strip('\n').split(sep="==")
+        virtual_env_dict[package_name] = package_version
+
+    for package, version in correct_dict.items():
+        assert virtual_env_dict[package] == version
+
+
+def test_package_installation_with_target_path(monkeypatch, virtualenv):
+    # TODO : Need to add test for direct-source e.g. ' @ '
+    elyra_dict = {'ipykernel': '5.3.0',
+                  'ansiwrap': '0.8.4',
+                  'packaging': '20.0',
+                  'text-extensions-for-pandas': '2.0.0'
+                  }
+    to_install_dict = {'bleach': '3.1.5',
+                       'ansiwrap': '0.7.0',
+                       'packaging': '20.4',
+                       'text-extensions-for-pandas':
+                       "git+https://github.com/akchinSTC/"
+                       "text-extensions-for-pandas@50d5a1688fb723b5dd8139761830d3419042fee5"
+                       }
+    correct_dict = {'ipykernel': '5.3.0',
+                    'ansiwrap': '0.8.4',
+                    'packaging': '20.4',
+                    'text-extensions-for-pandas':
+                    "git+https://github.com/akchinSTC/text-extensions-for-pandas@50d5a1688fb723b5dd8139761830d3419042fee5"
+                    }
+
+    mocked_func = mock.Mock(return_value="default", side_effect=[elyra_dict, to_install_dict])
+
+    monkeypatch.setattr(bootstrapper, "package_list_to_dict", mocked_func)
+    monkeypatch.setattr(sys, "executable", virtualenv.python)
+    monkeypatch.setattr(bootstrapper, 'input_params', {'user-volume-path': '/tmp/lib/'})
+
+    virtualenv.run("python -m pip install --target='/tmp/lib/' bleach==3.1.5")
+    virtualenv.run("python -m pip install --target='/tmp/lib/' ansiwrap==0.7.0")
+    virtualenv.run("python -m pip install --target='/tmp/lib/' packaging==20.4")
+    virtualenv.run("python -m pip install --target='/tmp/lib/' git+https://github.com/akchinSTC/"
+                   "text-extensions-for-pandas@50d5a1688fb723b5dd8139761830d3419042fee5")
+
+    bootstrapper.package_install()
+    virtual_env_dict = {}
+    output = virtualenv.run("python -m pip freeze --path=/tmp/lib/", capture=True)
+    print("This is the output :" + output)
     for line in output.strip().split('\n'):
         if " @ " in line:
             package_name, package_version = line.strip('\n').split(sep=" @ ")
@@ -329,7 +380,8 @@ def test_parse_arguments():
                  '-d', 'test-directory',
                  '-t', 'test-archive.tgz',
                  '-n', 'test-notebook.ipynb',
-                 '-b', 'test-bucket']
+                 '-b', 'test-bucket',
+                 '-f', '/tmp/lib']
     args_dict = bootstrapper.parse_arguments(test_args)
 
     assert args_dict['cos-endpoint'] == 'http://test.me.now'
@@ -337,6 +389,7 @@ def test_parse_arguments():
     assert args_dict['cos-dependencies-archive'] == 'test-archive.tgz'
     assert args_dict['cos-bucket'] == 'test-bucket'
     assert args_dict['notebook'] == 'test-notebook.ipynb'
+    assert args_dict['user-volume-path'] == '/tmp/lib'
     assert not args_dict['inputs']
     assert not args_dict['outputs']
 
