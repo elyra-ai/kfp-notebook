@@ -213,14 +213,14 @@ def test_package_installation(monkeypatch, virtualenv):
     correct_dict = {'ipykernel': '5.3.0',
                     'ansiwrap': '0.8.4',
                     'packaging': '20.4',
-                    'text-extensions-for-pandas':
-                    "git+https://github.com/akchinSTC/text-extensions-for-pandas@50d5a1688fb723b5dd8139761830d3419042fee5"
+                    'text-extensions-for-pandas': "0.0.1-prealpha"
                     }
 
     mocked_func = mock.Mock(return_value="default", side_effect=[elyra_dict, to_install_dict])
 
     monkeypatch.setattr(bootstrapper, "package_list_to_dict", mocked_func)
     monkeypatch.setattr(sys, "executable", virtualenv.python)
+    monkeypatch.setattr(bootstrapper, 'input_params', {'user-volume-path': None})
 
     virtualenv.run("python -m pip install bleach==3.1.5")
     virtualenv.run("python -m pip install ansiwrap==0.7.0")
