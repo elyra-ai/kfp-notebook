@@ -336,7 +336,7 @@ class OpUtil(object):
 
 
 def main():
-
+    global input_params
     # Setup packages and gather arguments
     input_params = OpUtil.parse_arguments(sys.argv[1:])
     OpUtil.package_install(user_volume_path=input_params.get('user-volume-path'))

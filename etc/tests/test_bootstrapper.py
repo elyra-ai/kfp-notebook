@@ -63,8 +63,9 @@ def s3_setup():
 
 def main_method_setup_execution(monkeypatch, s3_setup, tmpdir, argument_dict):
     """Primary body for main method testing..."""
-    monkeypatch.setattr(bootstrapper.OpUtil, "parse_arguments", lambda x: argument_dict)
-    monkeypatch.setattr(bootstrapper.OpUtil, "package_install", lambda: True)
+    monkeypatch.setattr(bootstrapper.OpUtil, 'parse_arguments', lambda x: argument_dict)
+    monkeypatch.setattr(bootstrapper.OpUtil, 'package_install', mock.Mock(return_value=True))
+
     monkeypatch.setenv("AWS_ACCESS_KEY_ID", "minioadmin")
     monkeypatch.setenv("AWS_SECRET_ACCESS_KEY", "minioadmin")
     monkeypatch.setenv("TEST_ENV_VAR1", "test_env_var1")
@@ -130,7 +131,8 @@ def test_main_method(monkeypatch, s3_setup, tmpdir):
                      'cos-dependencies-archive': 'test-archive.tgz',
                      'filepath': 'etc/tests/resources/test-notebookA.ipynb',
                      'inputs': 'test-file.txt;test,file.txt',
-                     'outputs': 'test-file/test-file-copy.txt;test-file/test,file/test,file-copy.txt'}
+                     'outputs': 'test-file/test-file-copy.txt;test-file/test,file/test,file-copy.txt',
+                     'user-volume-path': None}
     main_method_setup_execution(monkeypatch, s3_setup, tmpdir, argument_dict)
 
 
@@ -141,7 +143,8 @@ def test_main_method_with_wildcard_outputs(monkeypatch, s3_setup, tmpdir):
                      'cos-dependencies-archive': 'test-archive.tgz',
                      'filepath': 'etc/tests/resources/test-notebookA.ipynb',
                      'inputs': 'test-file.txt;test,file.txt',
-                     'outputs': 'test-file/*'}
+                     'outputs': 'test-file/*',
+                     'user-volume-path': None}
     main_method_setup_execution(monkeypatch, s3_setup, tmpdir, argument_dict)
 
 
@@ -152,7 +155,8 @@ def test_main_method_with_dir_outputs(monkeypatch, s3_setup, tmpdir):
                      'cos-dependencies-archive': 'test-archive.tgz',
                      'filepath': 'etc/tests/resources/test-notebookA.ipynb',
                      'inputs': 'test-file.txt;test,file.txt',
-                     'outputs': 'test-file'}  # this is the directory that contains the outputs
+                     'outputs': 'test-file', # this is the directory that contains the outputs
+                     'user-volume-path': None}
     main_method_setup_execution(monkeypatch, s3_setup, tmpdir, argument_dict)
 
 
@@ -163,9 +167,10 @@ def test_fail_bad_endpoint_main_method(monkeypatch, tmpdir):
                      'cos-dependencies-archive': 'test-archive.tgz',
                      'filepath': 'etc/tests/resources/test-notebookA.ipynb',
                      'inputs': 'test-file.txt',
-                     'outputs': 'test-file/test-file-copy.txt'}
+                     'outputs': 'test-file/test-file-copy.txt',
+                     'user-volume-path': None}
     monkeypatch.setattr(bootstrapper.OpUtil, "parse_arguments", lambda x: argument_dict)
-    monkeypatch.setattr(bootstrapper.OpUtil, "package_install", lambda: True)
+    monkeypatch.setattr(bootstrapper.OpUtil, 'package_install', mock.Mock(return_value=True))
 
     mocked_func = mock.Mock(return_value="default", side_effect=['test-archive.tgz',
                                                                  'test-file.txt',
@@ -189,10 +194,11 @@ def test_fail_bad_notebook_main_method(monkeypatch, s3_setup, tmpdir):
                      'cos-dependencies-archive': 'test-bad-archiveB.tgz',
                      'filepath': 'etc/tests/resources/test-bad-notebookB.ipynb',
                      'inputs': 'test-file.txt',
-                     'outputs': 'test-file/test-copy-file.txt'}
+                     'outputs': 'test-file/test-copy-file.txt',
+                     'user-volume-path': None}
 
     monkeypatch.setattr(bootstrapper.OpUtil, "parse_arguments", lambda x: argument_dict)
-    monkeypatch.setattr(bootstrapper.OpUtil, "package_install", lambda: True)
+    monkeypatch.setattr(bootstrapper.OpUtil, 'package_install', mock.Mock(return_value=True))
 
     mocked_func = mock.Mock(return_value="default", side_effect=['test-bad-archiveB.tgz',
                                                                  'test-file.txt',
@@ -240,7 +246,6 @@ def test_package_installation(monkeypatch, virtualenv):
 
     monkeypatch.setattr(bootstrapper.OpUtil, "package_list_to_dict", mocked_func)
     monkeypatch.setattr(sys, "executable", virtualenv.python)
-    monkeypatch.setattr(bootstrapper, 'input_params', {'user-volume-path': None})
 
     virtualenv.run("python -m pip install bleach==3.1.5")
     virtualenv.run("python -m pip install ansiwrap==0.7.0")
@@ -248,7 +253,7 @@ def test_package_installation(monkeypatch, virtualenv):
     virtualenv.run("python -m pip install git+https://github.com/akchinSTC/"
                    "text-extensions-for-pandas@50d5a1688fb723b5dd8139761830d3419042fee5")
 
-    bootstrapper.OpUtil.package_install()
+    bootstrapper.OpUtil.package_install(user_volume_path=None)
     virtual_env_dict = {}
     output = virtualenv.run("python -m pip freeze", capture=True)
     for line in output.strip().split('\n'):
@@ -287,9 +292,8 @@ def test_package_installation_with_target_path(monkeypatch, virtualenv):
 
     mocked_func = mock.Mock(return_value="default", side_effect=[elyra_dict, to_install_dict])
 
-    monkeypatch.setattr(bootstrapper, "package_list_to_dict", mocked_func)
+    monkeypatch.setattr(bootstrapper.OpUtil, "package_list_to_dict", mocked_func)
     monkeypatch.setattr(sys, "executable", virtualenv.python)
-    monkeypatch.setattr(bootstrapper, 'input_params', {'user-volume-path': '/tmp/lib/'})
 
     virtualenv.run("python -m pip install --target='/tmp/lib/' bleach==3.1.5")
     virtualenv.run("python -m pip install --target='/tmp/lib/' ansiwrap==0.7.0")
@@ -297,7 +301,7 @@ def test_package_installation_with_target_path(monkeypatch, virtualenv):
     virtualenv.run("python -m pip install --target='/tmp/lib/' git+https://github.com/akchinSTC/"
                    "text-extensions-for-pandas@50d5a1688fb723b5dd8139761830d3419042fee5")
 
-    bootstrapper.package_install()
+    bootstrapper.OpUtil.package_install(user_volume_path='/tmp/lib/')
     virtual_env_dict = {}
     output = virtualenv.run("python -m pip freeze --path=/tmp/lib/", capture=True)
     print("This is the output :" + output)
@@ -471,3 +475,4 @@ def test_fail_requirements_file_bad_delimiter():
     bad_requirements_file = "etc/tests/resources/test-bad-requirements-elyra.txt"
     with pytest.raises(ValueError):
         list_dict = bootstrapper.OpUtil.package_list_to_dict(bad_requirements_file)
+
