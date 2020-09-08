@@ -122,6 +122,19 @@ def test_fail_with_empty_string_as_notebook():
     assert "You need to provide a notebook." == str(error_info.value)
 
 
+def test_user_volume_size():
+    notebook_op = NotebookOp(name="test",
+                             notebook="test_notebook.ipynb",
+                             cos_endpoint="http://testserver:32525",
+                             cos_bucket="test_bucket",
+                             cos_directory="test_directory",
+                             cos_dependencies_archive="test_archive.tgz",
+                             image="test/image:dev",
+                             emptydir_volume_size='20Gi')
+    assert notebook_op.emptydir_volume_size == '20Gi'
+    assert notebook_op.container_work_dir_root_path == '/mnt/'
+
+
 @pytest.mark.skip(reason="not sure if we should even test this")
 def test_default_bootstrap_url(notebook_op):
     assert notebook_op.bootstrap_script_url == 'https://raw.githubusercontent.com/elyra-ai/kfp-notebook/' \

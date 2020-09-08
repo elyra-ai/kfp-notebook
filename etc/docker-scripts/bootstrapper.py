@@ -52,6 +52,8 @@ def package_install():
             to_install_list.append(package+'=='+ver)
 
     if to_install_list:
+        if input_params['user-volume-path']:
+            to_install_list.insert(0, '--target=' + input_params['user-volume-path'])
         subprocess.check_call([sys.executable, '-m', 'pip', 'install'] + to_install_list)
 
 
@@ -84,6 +86,7 @@ def parse_arguments(args):
     parser.add_argument('-n', '--notebook', dest="notebook", help='Notebook to execute', required=True)
     parser.add_argument('-o', '--outputs', dest="outputs", help='Files to output to object store', required=False)
     parser.add_argument('-i', '--inputs', dest="inputs", help='Files to pull in from parent node', required=False)
+    parser.add_argument('-p', '--user-volume-path', dest="user-volume-path", help='Directory in Volume to install python libraries into', required=False)
     parsed_args = vars(parser.parse_args(args))
 
     return parsed_args
@@ -181,6 +184,9 @@ def process_output_file(cos_client, bucket, output_file):
 
 
 def main():
+    global input_params
+    input_params = parse_arguments(sys.argv[1:])
+
     package_install()
     subprocess.check_call([sys.executable, '-m', 'pip', 'freeze'])
 
@@ -190,9 +196,6 @@ def main():
     from urllib.parse import urlparse
 
     print("Package Installation Complete.....")
-
-    global input_params
-    input_params = parse_arguments(sys.argv[1:])
 
     cos_endpoint = urlparse(input_params['cos-endpoint'])
     cos_client = minio.Minio(cos_endpoint.netloc,

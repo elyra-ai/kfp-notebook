@@ -19,8 +19,9 @@ import os
 
 from kfp.dsl._container_op import ContainerOp
 from kfp_notebook import __version__
-from kubernetes.client.models import V1EnvVar
+from kubernetes.client.models import V1EmptyDirVolumeSource, V1EnvVar, V1Volume, V1VolumeMount
 from typing import Dict, List, Optional
+
 
 """
 The NotebookOp uses a python script to bootstrap the user supplied image with the required dependencies.
@@ -49,6 +50,7 @@ class NotebookOp(ContainerOp):
                  pipeline_envs: Optional[Dict[str,str]] = None,
                  requirements_url: str = None,
                  bootstrap_script_url: str = None,
+                 emptydir_volume_size: str = None,
                  **kwargs):
         """Create a new instance of ContainerOp.
         Args:
@@ -72,7 +74,9 @@ class NotebookOp(ContainerOp):
         self.cos_bucket = cos_bucket
         self.cos_directory = cos_directory
         self.cos_dependencies_archive = cos_dependencies_archive
-        self.container_work_dir = "jupyter-work-dir"
+        self.container_work_dir_root_path = "./"
+        self.container_work_dir_name = "jupyter-work-dir"
+        self.container_work_dir = self.container_work_dir_root_path + self.container_work_dir_name
         self.bootstrap_script_url = bootstrap_script_url
         self.requirements_url = requirements_url
         self.pipeline_outputs = pipeline_outputs
@@ -80,6 +84,20 @@ class NotebookOp(ContainerOp):
         self.pipeline_envs = pipeline_envs
 
         argument_list = []
+
+        # CRI-o support for kfp pipelines
+        # We need to attach an emptydir volume for each notebook that runs since CRI-o runtime does not allow
+        # us to write to the base image layer file system, only to volumes.
+        self.emptydir_volume_name = "workspace"
+        self.emptydir_volume_size = emptydir_volume_size
+        self.python_user_lib_path = ''
+        self.python_user_lib_path_target = ''
+
+        if self.emptydir_volume_size:
+            self.container_work_dir_root_path = "/mnt/"
+            self.container_work_dir = self.container_work_dir_root_path + self.container_work_dir_name
+            self.python_user_lib_path = self.container_work_dir + '/python3.6/'
+            self.python_user_lib_path_target = '--target=' + self.python_user_lib_path
 
         if not self.bootstrap_script_url:
             self.bootstrap_script_url = 'https://raw.githubusercontent.com/{org}/' \
@@ -103,10 +121,10 @@ class NotebookOp(ContainerOp):
                 NOTE: Images being pulled must have python3 available on PATH and cURL utility
             """
 
-            argument_list.append('mkdir -p ./{container_work_dir} && cd ./{container_work_dir} && '
+            argument_list.append('mkdir -p {container_work_dir} && cd {container_work_dir} && '
                                  'curl -H "Cache-Control: no-cache" -L {bootscript_url} --output bootstrapper.py && '
                                  'curl -H "Cache-Control: no-cache" -L {reqs_url} --output requirements-elyra.txt && '
-                                 'python -m pip install packaging && '
+                                 'python -m pip install {python_user_lib_path_target} packaging && '
                                  'python -m pip freeze > requirements-current.txt && '
                                  'python bootstrapper.py '
                                  '--cos-endpoint {cos_endpoint} '
@@ -121,9 +139,11 @@ class NotebookOp(ContainerOp):
                                     cos_bucket=self.cos_bucket,
                                     cos_directory=self.cos_directory,
                                     cos_dependencies_archive=self.cos_dependencies_archive,
-                                    notebook=self.notebook
+                                    notebook=self.notebook,
+                                    python_user_lib_path_target=self.python_user_lib_path_target,
                                     )
                                  )
+
             if self.pipeline_inputs:
                 inputs_str = self._artifact_list_to_str(self.pipeline_inputs)
                 argument_list.append('--inputs "{}" '.format(inputs_str))
@@ -131,6 +151,9 @@ class NotebookOp(ContainerOp):
             if self.pipeline_outputs:
                 outputs_str = self._artifact_list_to_str(self.pipeline_outputs)
                 argument_list.append('--outputs "{}" '.format(outputs_str))
+
+            if self.emptydir_volume_size:
+                argument_list.append('--user-volume-path "{}" '.format(self.python_user_lib_path))
 
             kwargs['command'] = ['sh', '-c']
             kwargs['arguments'] = "".join(argument_list)
@@ -142,6 +165,21 @@ class NotebookOp(ContainerOp):
         if self.pipeline_envs:
             for key,value in self.pipeline_envs.items():  # Convert dict entries to format kfp needs
                 self.container.add_env_variable(V1EnvVar(name=key, value=value))
+
+        # If crio volume size is found then assume kubeflow pipelines environment is using CRI-o as
+        # its container runtime
+        if self.emptydir_volume_size:
+            self.add_volume(V1Volume(empty_dir=V1EmptyDirVolumeSource(
+                                     medium="",
+                                     size_limit=self.emptydir_volume_size),
+                            name=self.emptydir_volume_name))
+
+            self.container.add_volume_mount(V1VolumeMount(mount_path=self.container_work_dir,
+                                                          name=self.emptydir_volume_name))
+
+            # Append to PYTHONPATH location of elyra dependencies in installed in Volume
+            self.container.add_env_variable(V1EnvVar(name='PYTHONPATH',
+                                                     value=self.python_user_lib_path + ':$PYTHONPATH'))
 
     def _get_file_name_with_extension(self, name, extension):
         """ Simple function to construct a string filename
