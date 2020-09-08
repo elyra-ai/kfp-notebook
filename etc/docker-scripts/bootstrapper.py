@@ -339,7 +339,7 @@ def main():
 
     # Setup packages and gather arguments
     input_params = OpUtil.parse_arguments(sys.argv[1:])
-    OpUtil.package_install(input_params.get('user-volume-path'))
+    OpUtil.package_install(user_volume_path=input_params.get('user-volume-path'))
 
     # Create the appropriate instance, process dependencies and execute the operation
     file_op = FileOpBase.get_instance(**input_params)
