@@ -131,7 +131,7 @@ class NotebookOp(ContainerOp):
                                  '--cos-bucket {cos_bucket} '
                                  '--cos-directory "{cos_directory}" '
                                  '--cos-dependencies-archive "{cos_dependencies_archive}" '
-                                 '--notebook "{notebook}" '.format(
+                                 '--file "{notebook}" '.format(
                                     container_work_dir=self.container_work_dir,
                                     bootscript_url=self.bootstrap_script_url,
                                     reqs_url=self.requirements_url,
