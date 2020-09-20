@@ -241,10 +241,13 @@ class PythonFileOp(FileOpBase):
             # with open(python_script_output, "w") as output_file:
             #     subprocess.check_call([sys.executable, python_script], stdout=output_file)
 
-            subprocess.check_call(['python', python_script])
+            with open(python_script_output, "w") as output_file:
+                subprocess.check_call(['python', python_script], stdout=output_file)
 
-            # print("Uploading Python Script execution log back to Object Storage")
-            # put_file_to_object_storage(python_script_output, python_script_output)
+            # subprocess.check_call(['python', python_script])
+
+            print("Uploading Python Script execution log back to Object Storage")
+            self.put_file_to_object_storage(python_script_output, python_script_output)
 
             self.process_outputs()
         except Exception as ex:
