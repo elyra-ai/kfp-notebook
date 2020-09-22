@@ -41,7 +41,7 @@ import bootstrapper
 # test_convert_notebook_to_html() below.
 #
 
-HTML_SHA256 = '0f3f3dcd3660f49776bceb46bdddf1420498a8544d4066c5341c14d014743c0d'
+HTML_SHA256 = '4f717d3bbb41cb7b7d03814dee6639d3190e5b80f8a80b9af310b6109846d509'
 
 
 @pytest.fixture(scope='function')
@@ -321,7 +321,7 @@ def test_package_installation_with_target_path(monkeypatch, virtualenv):
 def test_convert_notebook_to_html(tmpdir):
     notebook_file = os.getcwd() + "/etc/tests/resources/test-notebookA.ipynb"
     notebook_output_html_file = "test-notebookA.html"
-    html_sha256 = '7b375914a055f15791f0f68a3f336a12d73adca6893e45081920bd28dda894c3'
+
     with tmpdir.as_cwd():
         bootstrapper.NotebookFileOp.convert_notebook_to_html(notebook_file, notebook_output_html_file)
 
