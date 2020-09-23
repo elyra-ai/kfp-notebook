@@ -17,7 +17,7 @@
 
 import os
 
-from kfp.dsl._container_op import ContainerOp
+from kfp.dsl import ContainerOp
 from kfp_notebook import __version__
 from kubernetes.client.models import V1EmptyDirVolumeSource, V1EnvVar, V1Volume, V1VolumeMount
 from typing import Dict, List, Optional
