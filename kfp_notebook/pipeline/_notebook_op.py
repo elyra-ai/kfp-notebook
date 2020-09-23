@@ -34,7 +34,7 @@ and have python3
 INOUT_SEPARATOR= ';'
 
 KFP_NOTEBOOK_ORG = os.getenv("KFP_NOTEBOOK_ORG", "elyra-ai")
-KFP_NOTEBOOK_BRANCH = os.getenv("KFP_NOTEBOOK_BRANCH", "master" if 'dev' in __version__ else "v" + __version__)
+KFP_NOTEBOOK_BRANCH = os.getenv("KFP_NOTEBOOK_BRANCH", "v0.12.0" if 'dev' in __version__ else "v" + __version__)
 
 
 class NotebookOp(ContainerOp):
