@@ -41,7 +41,8 @@ import bootstrapper
 # test_convert_notebook_to_html() below.
 #
 
-HTML_SHA256 = '0f3f3dcd3660f49776bceb46bdddf1420498a8544d4066c5341c14d014743c0d'
+HTML_SHA256 = '4f717d3bbb41cb7b7d03814dee6639d3190e5b80f8a80b9af310b6109846d509'
+
 
 @pytest.fixture(scope='function')
 def s3_setup():
@@ -59,10 +60,12 @@ def s3_setup():
         cos_client.remove_object(bucket_name, file.object_name)
     cos_client.remove_bucket(bucket_name)
 
+
 def main_method_setup_execution(monkeypatch, s3_setup, tmpdir, argument_dict):
     """Primary body for main method testing..."""
-    monkeypatch.setattr(bootstrapper, "parse_arguments", lambda x: argument_dict)
-    monkeypatch.setattr(bootstrapper, "package_install", lambda: True)
+    monkeypatch.setattr(bootstrapper.OpUtil, 'parse_arguments', lambda x: argument_dict)
+    monkeypatch.setattr(bootstrapper.OpUtil, 'package_install', mock.Mock(return_value=True))
+
     monkeypatch.setenv("AWS_ACCESS_KEY_ID", "minioadmin")
     monkeypatch.setenv("AWS_SECRET_ACCESS_KEY", "minioadmin")
     monkeypatch.setenv("TEST_ENV_VAR1", "test_env_var1")
@@ -102,14 +105,34 @@ def main_method_setup_execution(monkeypatch, s3_setup, tmpdir, argument_dict):
                         assert 'TEST_ENV_VAR1: test_env_var1' in html_file.read()
 
 
+def _get_operation_instance(monkeypatch, s3_setup):
+    config = {
+        'cos-endpoint': 'http://127.0.0.1:9000',
+        'cos-user': 'minioadmin',
+        'cos-password': 'minioadmin',
+        'cos-bucket': 'test-bucket',
+        'filepath': 'untitled.ipynb'
+    }
+
+    op = bootstrapper.FileOpBase.get_instance(**config)
+
+    # use the same minio instance used by the test
+    # to avoid access denied errors when two minio
+    # instances exist
+    monkeypatch.setattr(op, "cos_client", s3_setup)
+
+    return op
+
+
 def test_main_method(monkeypatch, s3_setup, tmpdir):
     argument_dict = {'cos-endpoint': 'http://127.0.0.1:9000',
                      'cos-bucket': 'test-bucket',
                      'cos-directory': 'test-directory',
                      'cos-dependencies-archive': 'test-archive.tgz',
-                     'notebook': 'etc/tests/resources/test-notebookA.ipynb',
+                     'filepath': 'etc/tests/resources/test-notebookA.ipynb',
                      'inputs': 'test-file.txt;test,file.txt',
-                     'outputs': 'test-file/test-file-copy.txt;test-file/test,file/test,file-copy.txt'}
+                     'outputs': 'test-file/test-file-copy.txt;test-file/test,file/test,file-copy.txt',
+                     'user-volume-path': None}
     main_method_setup_execution(monkeypatch, s3_setup, tmpdir, argument_dict)
 
 
@@ -118,9 +141,10 @@ def test_main_method_with_wildcard_outputs(monkeypatch, s3_setup, tmpdir):
                      'cos-bucket': 'test-bucket',
                      'cos-directory': 'test-directory',
                      'cos-dependencies-archive': 'test-archive.tgz',
-                     'notebook': 'etc/tests/resources/test-notebookA.ipynb',
+                     'filepath': 'etc/tests/resources/test-notebookA.ipynb',
                      'inputs': 'test-file.txt;test,file.txt',
-                     'outputs': 'test-file/*'}
+                     'outputs': 'test-file/*',
+                     'user-volume-path': None}
     main_method_setup_execution(monkeypatch, s3_setup, tmpdir, argument_dict)
 
 
@@ -129,11 +153,11 @@ def test_main_method_with_dir_outputs(monkeypatch, s3_setup, tmpdir):
                      'cos-bucket': 'test-bucket',
                      'cos-directory': 'test-directory',
                      'cos-dependencies-archive': 'test-archive.tgz',
-                     'notebook': 'etc/tests/resources/test-notebookA.ipynb',
+                     'filepath': 'etc/tests/resources/test-notebookA.ipynb',
                      'inputs': 'test-file.txt;test,file.txt',
-                     'outputs': 'test-file'}  # this is the directory that contains the outputs
+                     'outputs': 'test-file', # this is the directory that contains the outputs
+                     'user-volume-path': None}
     main_method_setup_execution(monkeypatch, s3_setup, tmpdir, argument_dict)
-
 
 
 def test_fail_bad_endpoint_main_method(monkeypatch, tmpdir):
@@ -141,18 +165,19 @@ def test_fail_bad_endpoint_main_method(monkeypatch, tmpdir):
                      'cos-bucket': 'test-bucket',
                      'cos-directory': 'test-directory',
                      'cos-dependencies-archive': 'test-archive.tgz',
-                     'notebook': 'etc/tests/resources/test-notebookA.ipynb',
+                     'filepath': 'etc/tests/resources/test-notebookA.ipynb',
                      'inputs': 'test-file.txt',
-                     'outputs': 'test-file/test-file-copy.txt'}
-    monkeypatch.setattr(bootstrapper, "parse_arguments", lambda x: argument_dict)
-    monkeypatch.setattr(bootstrapper, "package_install", lambda: True)
+                     'outputs': 'test-file/test-file-copy.txt',
+                     'user-volume-path': None}
+    monkeypatch.setattr(bootstrapper.OpUtil, "parse_arguments", lambda x: argument_dict)
+    monkeypatch.setattr(bootstrapper.OpUtil, 'package_install', mock.Mock(return_value=True))
 
     mocked_func = mock.Mock(return_value="default", side_effect=['test-archive.tgz',
                                                                  'test-file.txt',
                                                                  'test-notebookA-output.ipynb',
                                                                  'test-notebookA.html',
                                                                  'test-file.txt'])
-    monkeypatch.setattr(bootstrapper, "get_object_storage_filename", mocked_func)
+    monkeypatch.setattr(bootstrapper.FileOpBase, "get_object_storage_filename", mocked_func)
 
     monkeypatch.setenv("AWS_ACCESS_KEY_ID", "minioadmin")
     monkeypatch.setenv("AWS_SECRET_ACCESS_KEY", "minioadmin")
@@ -167,19 +192,20 @@ def test_fail_bad_notebook_main_method(monkeypatch, s3_setup, tmpdir):
                      'cos-bucket': 'test-bucket',
                      'cos-directory': 'test-directory',
                      'cos-dependencies-archive': 'test-bad-archiveB.tgz',
-                     'notebook': 'etc/tests/resources/test-bad-notebookB.ipynb',
+                     'filepath': 'etc/tests/resources/test-bad-notebookB.ipynb',
                      'inputs': 'test-file.txt',
-                     'outputs': 'test-file/test-copy-file.txt'}
+                     'outputs': 'test-file/test-copy-file.txt',
+                     'user-volume-path': None}
 
-    monkeypatch.setattr(bootstrapper, "parse_arguments", lambda x: argument_dict)
-    monkeypatch.setattr(bootstrapper, "package_install", lambda: True)
+    monkeypatch.setattr(bootstrapper.OpUtil, "parse_arguments", lambda x: argument_dict)
+    monkeypatch.setattr(bootstrapper.OpUtil, 'package_install', mock.Mock(return_value=True))
 
     mocked_func = mock.Mock(return_value="default", side_effect=['test-bad-archiveB.tgz',
                                                                  'test-file.txt',
                                                                  'test-bad-notebookB-output.ipynb',
                                                                  'test-bad-notebookB.html',
                                                                  'test-file.txt'])
-    monkeypatch.setattr(bootstrapper, "get_object_storage_filename", mocked_func)
+    monkeypatch.setattr(bootstrapper.FileOpBase, "get_object_storage_filename", mocked_func)
 
     monkeypatch.setenv("AWS_ACCESS_KEY_ID", "minioadmin")
     monkeypatch.setenv("AWS_SECRET_ACCESS_KEY", "minioadmin")
@@ -197,7 +223,6 @@ def test_fail_bad_notebook_main_method(monkeypatch, s3_setup, tmpdir):
 
 
 def test_package_installation(monkeypatch, virtualenv):
-    # TODO : Need to add test for direct-source e.g. ' @ '
     elyra_dict = {'ipykernel': '5.3.0',
                   'ansiwrap': '0.8.4',
                   'packaging': '20.0',
@@ -219,9 +244,8 @@ def test_package_installation(monkeypatch, virtualenv):
 
     mocked_func = mock.Mock(return_value="default", side_effect=[elyra_dict, to_install_dict])
 
-    monkeypatch.setattr(bootstrapper, "package_list_to_dict", mocked_func)
+    monkeypatch.setattr(bootstrapper.OpUtil, "package_list_to_dict", mocked_func)
     monkeypatch.setattr(sys, "executable", virtualenv.python)
-    monkeypatch.setattr(bootstrapper, 'input_params', {'user-volume-path': None})
 
     virtualenv.run("python -m pip install bleach==3.1.5")
     virtualenv.run("python -m pip install ansiwrap==0.7.0")
@@ -229,7 +253,7 @@ def test_package_installation(monkeypatch, virtualenv):
     virtualenv.run("python -m pip install git+https://github.com/akchinSTC/"
                    "text-extensions-for-pandas@50d5a1688fb723b5dd8139761830d3419042fee5")
 
-    bootstrapper.package_install()
+    bootstrapper.OpUtil.package_install(user_volume_path=None)
     virtual_env_dict = {}
     output = virtualenv.run("python -m pip freeze", capture=True)
     for line in output.strip().split('\n'):
@@ -268,9 +292,8 @@ def test_package_installation_with_target_path(monkeypatch, virtualenv):
 
     mocked_func = mock.Mock(return_value="default", side_effect=[elyra_dict, to_install_dict])
 
-    monkeypatch.setattr(bootstrapper, "package_list_to_dict", mocked_func)
+    monkeypatch.setattr(bootstrapper.OpUtil, "package_list_to_dict", mocked_func)
     monkeypatch.setattr(sys, "executable", virtualenv.python)
-    monkeypatch.setattr(bootstrapper, 'input_params', {'user-volume-path': '/tmp/lib/'})
 
     virtualenv.run("python -m pip install --target='/tmp/lib/' bleach==3.1.5")
     virtualenv.run("python -m pip install --target='/tmp/lib/' ansiwrap==0.7.0")
@@ -278,7 +301,7 @@ def test_package_installation_with_target_path(monkeypatch, virtualenv):
     virtualenv.run("python -m pip install --target='/tmp/lib/' git+https://github.com/akchinSTC/"
                    "text-extensions-for-pandas@50d5a1688fb723b5dd8139761830d3419042fee5")
 
-    bootstrapper.package_install()
+    bootstrapper.OpUtil.package_install(user_volume_path='/tmp/lib/')
     virtual_env_dict = {}
     output = virtualenv.run("python -m pip freeze --path=/tmp/lib/", capture=True)
     print("This is the output :" + output)
@@ -298,9 +321,9 @@ def test_package_installation_with_target_path(monkeypatch, virtualenv):
 def test_convert_notebook_to_html(tmpdir):
     notebook_file = os.getcwd() + "/etc/tests/resources/test-notebookA.ipynb"
     notebook_output_html_file = "test-notebookA.html"
-    html_sha256 = '7b375914a055f15791f0f68a3f336a12d73adca6893e45081920bd28dda894c3'
+
     with tmpdir.as_cwd():
-        bootstrapper.convert_notebook_to_html(notebook_file, notebook_output_html_file)
+        bootstrapper.NotebookFileOp.convert_notebook_to_html(notebook_file, notebook_output_html_file)
 
         assert os.path.isfile(notebook_output_html_file)
         assert hs.fileChecksum(notebook_output_html_file, "sha256") == HTML_SHA256
@@ -313,7 +336,7 @@ def test_fail_convert_notebook_to_html(tmpdir):
         # Recent versions raising typeError due to #1130
         # https://github.com/jupyter/nbconvert/pull/1130
         with pytest.raises( (TypeError, nbformat.validator.NotebookValidationError) ):
-            bootstrapper.convert_notebook_to_html(notebook_file, notebook_output_html_file)
+            bootstrapper.NotebookFileOp.convert_notebook_to_html(notebook_file, notebook_output_html_file)
 
 
 def test_get_file_object_store(monkeypatch, s3_setup, tmpdir):
@@ -321,14 +344,14 @@ def test_get_file_object_store(monkeypatch, s3_setup, tmpdir):
     current_directory = os.getcwd() + '/'
     bucket_name = "test-bucket"
 
-    monkeypatch.setattr(bootstrapper, "get_object_storage_filename", lambda x: file_to_get)
-
     s3_setup.fput_object(bucket_name=bucket_name,
                          object_name=file_to_get,
                          file_path=file_to_get)
 
     with tmpdir.as_cwd():
-        bootstrapper.get_file_from_object_storage(s3_setup, bucket_name, file_to_get)
+        op = _get_operation_instance(monkeypatch, s3_setup)
+
+        op.get_file_from_object_storage(file_to_get)
         assert os.path.isfile(file_to_get)
         assert hs.fileChecksum(file_to_get, "sha256") == hs.fileChecksum(current_directory+file_to_get, "sha256")
 
@@ -336,20 +359,20 @@ def test_get_file_object_store(monkeypatch, s3_setup, tmpdir):
 def test_fail_get_file_object_store(monkeypatch, s3_setup, tmpdir):
     bucket_name = "test-bucket"
     file_to_get = "test-file.txt"
-    monkeypatch.setattr(bootstrapper, "get_object_storage_filename", lambda x: file_to_get)
 
     with tmpdir.as_cwd():
         with pytest.raises(minio.error.NoSuchKey):
-            bootstrapper.get_file_from_object_storage(s3_setup, bucket_name, file_to_get)
+            op = _get_operation_instance(monkeypatch, s3_setup)
+            op.get_file_from_object_storage(file_to_get=file_to_get)
 
 
 def test_put_file_object_store(monkeypatch, s3_setup, tmpdir):
     bucket_name = "test-bucket"
     file_to_put = "LICENSE"
     current_directory = os.getcwd() + '/'
-    monkeypatch.setattr(bootstrapper, "get_object_storage_filename", lambda x: file_to_put)
 
-    bootstrapper.put_file_to_object_storage(s3_setup, bucket_name, file_to_put)
+    op = _get_operation_instance(monkeypatch, s3_setup)
+    op.put_file_to_object_storage(file_to_upload=file_to_put)
 
     with tmpdir.as_cwd():
         s3_setup.fget_object(bucket_name, file_to_put, file_to_put)
@@ -360,35 +383,36 @@ def test_put_file_object_store(monkeypatch, s3_setup, tmpdir):
 def test_fail_invalid_filename_put_file_object_store(monkeypatch, s3_setup):
     bucket_name = "test-bucket"
     file_to_put = "LICENSE_NOT_HERE"
-    monkeypatch.setattr(bootstrapper, "get_object_storage_filename", lambda x: file_to_put)
 
     with pytest.raises(FileNotFoundError):
-        bootstrapper.put_file_to_object_storage(s3_setup, bucket_name, file_to_put)
+        op = _get_operation_instance(monkeypatch, s3_setup)
+        op.put_file_to_object_storage(file_to_upload=file_to_put)
 
 
 def test_fail_bucket_put_file_object_store(monkeypatch, s3_setup):
     bucket_name = "test-bucket-not-exist"
     file_to_put = "LICENSE"
-    monkeypatch.setattr(bootstrapper, "get_object_storage_filename", lambda x: file_to_put)
 
     with pytest.raises(minio.error.NoSuchBucket):
-        bootstrapper.put_file_to_object_storage(s3_setup, bucket_name, file_to_put)
+        op = _get_operation_instance(monkeypatch, s3_setup)
+        monkeypatch.setattr(op, "cos_bucket", bucket_name)
+        op.put_file_to_object_storage(file_to_upload=file_to_put)
 
 
 def test_parse_arguments():
     test_args = ['-e', 'http://test.me.now',
                  '-d', 'test-directory',
                  '-t', 'test-archive.tgz',
-                 '-n', 'test-notebook.ipynb',
+                 '-f', 'test-notebook.ipynb',
                  '-b', 'test-bucket',
                  '-p', '/tmp/lib']
-    args_dict = bootstrapper.parse_arguments(test_args)
+    args_dict = bootstrapper.OpUtil.parse_arguments(test_args)
 
     assert args_dict['cos-endpoint'] == 'http://test.me.now'
     assert args_dict['cos-directory'] == 'test-directory'
     assert args_dict['cos-dependencies-archive'] == 'test-archive.tgz'
     assert args_dict['cos-bucket'] == 'test-bucket'
-    assert args_dict['notebook'] == 'test-notebook.ipynb'
+    assert args_dict['filepath'] == 'test-notebook.ipynb'
     assert args_dict['user-volume-path'] == '/tmp/lib'
     assert not args_dict['inputs']
     assert not args_dict['outputs']
@@ -400,54 +424,55 @@ def test_fail_missing_notebook_parse_arguments():
                  '-t', 'test-archive.tgz',
                  '-b', 'test-bucket']
     with pytest.raises(SystemExit):
-        bootstrapper.parse_arguments(test_args)
+        bootstrapper.OpUtil.parse_arguments(test_args)
 
 
 def test_fail_missing_endpoint_parse_arguments():
     test_args = ['-d', 'test-directory',
                  '-t', 'test-archive.tgz',
-                 '-n', 'test-notebook.ipynb',
+                 '-f', 'test-notebook.ipynb',
                  '-b', 'test-bucket']
     with pytest.raises(SystemExit):
-        bootstrapper.parse_arguments(test_args)
+        bootstrapper.OpUtil.parse_arguments(test_args)
 
 
 def test_fail_missing_archive_parse_arguments():
     test_args = ['-e', 'http://test.me.now',
                  '-d', 'test-directory',
-                 '-n', 'test-notebook.ipynb',
+                 '-f', 'test-notebook.ipynb',
                  '-b', 'test-bucket']
     with pytest.raises(SystemExit):
-        bootstrapper.parse_arguments(test_args)
+        bootstrapper.OpUtil.parse_arguments(test_args)
 
 
 def test_fail_missing_bucket_parse_arguments():
     test_args = ['-e', 'http://test.me.now',
                  '-d', 'test-directory',
                  '-t', 'test-archive.tgz',
-                 '-n', 'test-notebook.ipynb']
+                 '-f', 'test-notebook.ipynb']
     with pytest.raises(SystemExit):
-        bootstrapper.parse_arguments(test_args)
+        bootstrapper.OpUtil.parse_arguments(test_args)
 
 
 def test_fail_missing_directory_parse_arguments():
     test_args = ['-e', 'http://test.me.now',
                  '-t', 'test-archive.tgz',
-                 '-n', 'test-notebook.ipynb',
+                 '-f', 'test-notebook.ipynb',
                  '-b', 'test-bucket']
     with pytest.raises(SystemExit):
-        bootstrapper.parse_arguments(test_args)
+        bootstrapper.OpUtil.parse_arguments(test_args)
 
 
 @pytest.mark.skip(reason='leaving as informational - not sure worth checking if reqs change')
 def test_requirements_file():
     requirements_file = "etc/tests/resources/test-requirements-elyra.txt"
     correct_number_of_packages = 18
-    list_dict = bootstrapper.package_list_to_dict(requirements_file)
+    list_dict = bootstrapper.OpUtil.package_list_to_dict(requirements_file)
     assert len(list_dict) == correct_number_of_packages
 
 
 def test_fail_requirements_file_bad_delimiter():
     bad_requirements_file = "etc/tests/resources/test-bad-requirements-elyra.txt"
     with pytest.raises(ValueError):
-        list_dict = bootstrapper.package_list_to_dict(bad_requirements_file)
+        list_dict = bootstrapper.OpUtil.package_list_to_dict(bad_requirements_file)
+

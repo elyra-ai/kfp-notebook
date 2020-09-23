@@ -17,7 +17,7 @@
 
 import os
 
-from kfp.dsl._container_op import ContainerOp
+from kfp.dsl import ContainerOp
 from kfp_notebook import __version__
 from kubernetes.client.models import V1EmptyDirVolumeSource, V1EnvVar, V1Volume, V1VolumeMount
 from typing import Dict, List, Optional
@@ -131,7 +131,7 @@ class NotebookOp(ContainerOp):
                                  '--cos-bucket {cos_bucket} '
                                  '--cos-directory "{cos_directory}" '
                                  '--cos-dependencies-archive "{cos_dependencies_archive}" '
-                                 '--notebook "{notebook}" '.format(
+                                 '--file "{notebook}" '.format(
                                     container_work_dir=self.container_work_dir,
                                     bootscript_url=self.bootstrap_script_url,
                                     reqs_url=self.requirements_url,
