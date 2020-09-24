@@ -239,7 +239,7 @@ class PythonFileOp(FileOpBase):
         print("Executing Python Script : {} ==> {}".format(python_script, python_script_output))
         try:
             with open(python_script_output, "w") as log_file:
-                subprocess.check_call(['python3', python_script], stdout=log_file, stderr=subprocess.STDOUT)
+                subprocess.run(['python3', python_script], stdout=log_file, stderr=subprocess.STDOUT, check=True)
 
             print("Uploading Python Script execution log back to Object Storage")
             self.put_file_to_object_storage(python_script_output, python_script_output)
@@ -287,9 +287,9 @@ class OpUtil(object):
         if to_install_list:
             if user_volume_path:
                 to_install_list.insert(0, '--target=' + user_volume_path)
-            subprocess.check_call([sys.executable, '-m', 'pip', 'install'] + to_install_list)
+            subprocess.run([sys.executable, '-m', 'pip', 'install'] + to_install_list)
 
-        subprocess.check_call([sys.executable, '-m', 'pip', 'freeze'])
+        subprocess.run([sys.executable, '-m', 'pip', 'freeze'])
         print("Package Installation Complete.....")
 
     @classmethod
