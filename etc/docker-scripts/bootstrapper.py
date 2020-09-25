@@ -180,13 +180,7 @@ class NotebookFileOp(FileOpBase):
 
         print("Executing notebook through Papermill: {} ==> {}".format(notebook, notebook_output))
         try:
-            import papermill
-            papermill.execute_notebook(
-                notebook,
-                notebook_output,
-                kernel_name="python3"
-                # parameters=
-            )
+            subprocess.run(['papermill', notebook, notebook_output], check=True)
 
             NotebookFileOp.convert_notebook_to_html(notebook_output, notebook_html)
             print("Uploading result Notebook back to Object Storage")
