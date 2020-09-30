@@ -239,7 +239,7 @@ class PythonFileOp(FileOpBase):
         print("Executing Python Script : {} ==> {}".format(python_script, python_script_output))
         try:
             with open(python_script_output, "w") as log_file:
-                subprocess.check_call(['python', python_script], stdout=log_file, stderr=subprocess.STDOUT)
+                subprocess.check_call(['python3', python_script], stdout=log_file, stderr=subprocess.STDOUT)
 
             print("Uploading Python Script execution log back to Object Storage")
             self.put_file_to_object_storage(python_script_output, python_script_output)

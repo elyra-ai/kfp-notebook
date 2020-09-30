@@ -247,15 +247,15 @@ def test_package_installation(monkeypatch, virtualenv):
     monkeypatch.setattr(bootstrapper.OpUtil, "package_list_to_dict", mocked_func)
     monkeypatch.setattr(sys, "executable", virtualenv.python)
 
-    virtualenv.run("python -m pip install bleach==3.1.5")
-    virtualenv.run("python -m pip install ansiwrap==0.7.0")
-    virtualenv.run("python -m pip install packaging==20.4")
-    virtualenv.run("python -m pip install git+https://github.com/akchinSTC/"
+    virtualenv.run("python3 -m pip install bleach==3.1.5")
+    virtualenv.run("python3 -m pip install ansiwrap==0.7.0")
+    virtualenv.run("python3 -m pip install packaging==20.4")
+    virtualenv.run("python3 -m pip install git+https://github.com/akchinSTC/"
                    "text-extensions-for-pandas@50d5a1688fb723b5dd8139761830d3419042fee5")
 
     bootstrapper.OpUtil.package_install(user_volume_path=None)
     virtual_env_dict = {}
-    output = virtualenv.run("python -m pip freeze", capture=True)
+    output = virtualenv.run("python3 -m pip freeze", capture=True)
     for line in output.strip().split('\n'):
         if " @ " in line:
             package_name, package_version = line.strip('\n').split(sep=" @ ")
@@ -295,15 +295,15 @@ def test_package_installation_with_target_path(monkeypatch, virtualenv):
     monkeypatch.setattr(bootstrapper.OpUtil, "package_list_to_dict", mocked_func)
     monkeypatch.setattr(sys, "executable", virtualenv.python)
 
-    virtualenv.run("python -m pip install --target='/tmp/lib/' bleach==3.1.5")
-    virtualenv.run("python -m pip install --target='/tmp/lib/' ansiwrap==0.7.0")
-    virtualenv.run("python -m pip install --target='/tmp/lib/' packaging==20.4")
-    virtualenv.run("python -m pip install --target='/tmp/lib/' git+https://github.com/akchinSTC/"
+    virtualenv.run("python3 -m pip install --target='/tmp/lib/' bleach==3.1.5")
+    virtualenv.run("python3 -m pip install --target='/tmp/lib/' ansiwrap==0.7.0")
+    virtualenv.run("python3 -m pip install --target='/tmp/lib/' packaging==20.4")
+    virtualenv.run("python3 -m pip install --target='/tmp/lib/' git+https://github.com/akchinSTC/"
                    "text-extensions-for-pandas@50d5a1688fb723b5dd8139761830d3419042fee5")
 
     bootstrapper.OpUtil.package_install(user_volume_path='/tmp/lib/')
     virtual_env_dict = {}
-    output = virtualenv.run("python -m pip freeze --path=/tmp/lib/", capture=True)
+    output = virtualenv.run("python3 -m pip freeze --path=/tmp/lib/", capture=True)
     print("This is the output :" + output)
     for line in output.strip().split('\n'):
         if " @ " in line:
