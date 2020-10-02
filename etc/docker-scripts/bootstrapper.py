@@ -270,13 +270,13 @@ class OpUtil(object):
                           (package, current_packages[package]))
                 elif version.parse(ver) > version.parse(current_packages[package]):
                     print("Updating %s package from version %s to %s..." % (package, current_packages[package], ver))
-                    to_install_list.append(package+'=='+ver)
+                    to_install_list.append(package + '==' + ver)
                 elif version.parse(ver) < version.parse(current_packages[package]):
                     print("Newer %s package with version %s already installed. Skipping..." %
                           (package, current_packages[package]))
             else:
                 print("Package not found. Installing %s package with version %s..." % (package, ver))
-                to_install_list.append(package+'=='+ver)
+                to_install_list.append(package + '==' + ver)
 
         if to_install_list:
             if user_volume_path:

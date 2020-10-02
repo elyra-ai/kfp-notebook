@@ -137,8 +137,8 @@ def test_user_volume_size():
 
 @pytest.mark.skip(reason="not sure if we should even test this")
 def test_default_bootstrap_url(notebook_op):
-    assert notebook_op.bootstrap_script_url == 'https://raw.githubusercontent.com/elyra-ai/kfp-notebook/' \
-                                                'v0.9.1/etc/docker-scripts/bootstrapper.py'
+    assert notebook_op.bootstrap_script_url == \
+           'https://raw.githubusercontent.com/elyra-ai/kfp-notebook/v0.9.1/etc/docker-scripts/bootstrapper.py'
 
 
 def test_override_bootstrap_url():
@@ -155,8 +155,8 @@ def test_override_bootstrap_url():
 
 @pytest.mark.skip(reason="not sure if we should even test this")
 def test_default_requirements_url(notebook_op):
-    assert notebook_op.requirements_url == 'https://raw.githubusercontent.com/elyra-ai/' \
-                                            'kfp-notebook/v0.9.1/etc/requirements-elyra.txt'
+    assert notebook_op.requirements_url == \
+           'https://raw.githubusercontent.com/elyra-ai/kfp-notebook/v0.9.1/etc/requirements-elyra.txt'
 
 
 def test_override_requirements_url():

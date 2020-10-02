@@ -99,7 +99,7 @@ def main_method_setup_execution(monkeypatch, s3_setup, tmpdir, argument_dict):
         for file in test_file_list:
             if file != 'test-notebookA-output.ipynb':
                 assert s3_setup.stat_object(bucket_name=argument_dict['cos-bucket'],
-                                            object_name="test-directory/"+file)
+                                            object_name="test-directory/" + file)
                 if file == "test-notebookA.html":
                     with open("test-notebookA.html") as html_file:
                         assert 'TEST_ENV_VAR1: test_env_var1' in html_file.read()
@@ -155,7 +155,7 @@ def test_main_method_with_dir_outputs(monkeypatch, s3_setup, tmpdir):
                      'cos-dependencies-archive': 'test-archive.tgz',
                      'filepath': 'etc/tests/resources/test-notebookA.ipynb',
                      'inputs': 'test-file.txt;test,file.txt',
-                     'outputs': 'test-file', # this is the directory that contains the outputs
+                     'outputs': 'test-file',  # this is the directory that contains the outputs
                      'user-volume-path': None}
     main_method_setup_execution(monkeypatch, s3_setup, tmpdir, argument_dict)
 
@@ -239,7 +239,7 @@ def test_package_installation(monkeypatch, virtualenv):
                     'ansiwrap': '0.8.4',
                     'packaging': '20.4',
                     'text-extensions-for-pandas':
-                    "git+https://github.com/akchinSTC/text-extensions-for-pandas@50d5a1688fb723b5dd8139761830d3419042fee5"
+                    "git+https://github.com/akchinSTC/text-extensions-for-pandas@50d5a1688fb723b5dd8139761830d3419042fee5"  # noqa: E501
                     }
 
     mocked_func = mock.Mock(return_value="default", side_effect=[elyra_dict, to_install_dict])
@@ -287,7 +287,7 @@ def test_package_installation_with_target_path(monkeypatch, virtualenv):
                     'ansiwrap': '0.8.4',
                     'packaging': '20.4',
                     'text-extensions-for-pandas':
-                    "git+https://github.com/akchinSTC/text-extensions-for-pandas@50d5a1688fb723b5dd8139761830d3419042fee5"
+                    "git+https://github.com/akchinSTC/text-extensions-for-pandas@50d5a1688fb723b5dd8139761830d3419042fee5"  # noqa: E501
                     }
 
     mocked_func = mock.Mock(return_value="default", side_effect=[elyra_dict, to_install_dict])
@@ -335,7 +335,7 @@ def test_fail_convert_notebook_to_html(tmpdir):
     with tmpdir.as_cwd():
         # Recent versions raising typeError due to #1130
         # https://github.com/jupyter/nbconvert/pull/1130
-        with pytest.raises( (TypeError, nbformat.validator.NotebookValidationError) ):
+        with pytest.raises((TypeError, nbformat.validator.NotebookValidationError)):
             bootstrapper.NotebookFileOp.convert_notebook_to_html(notebook_file, notebook_output_html_file)
 
 
@@ -353,11 +353,10 @@ def test_get_file_object_store(monkeypatch, s3_setup, tmpdir):
 
         op.get_file_from_object_storage(file_to_get)
         assert os.path.isfile(file_to_get)
-        assert hs.fileChecksum(file_to_get, "sha256") == hs.fileChecksum(current_directory+file_to_get, "sha256")
+        assert hs.fileChecksum(file_to_get, "sha256") == hs.fileChecksum(current_directory + file_to_get, "sha256")
 
 
 def test_fail_get_file_object_store(monkeypatch, s3_setup, tmpdir):
-    bucket_name = "test-bucket"
     file_to_get = "test-file.txt"
 
     with tmpdir.as_cwd():
@@ -377,11 +376,10 @@ def test_put_file_object_store(monkeypatch, s3_setup, tmpdir):
     with tmpdir.as_cwd():
         s3_setup.fget_object(bucket_name, file_to_put, file_to_put)
         assert os.path.isfile(file_to_put)
-        assert hs.fileChecksum(file_to_put, "sha256") == hs.fileChecksum(current_directory+file_to_put, "sha256")
+        assert hs.fileChecksum(file_to_put, "sha256") == hs.fileChecksum(current_directory + file_to_put, "sha256")
 
 
 def test_fail_invalid_filename_put_file_object_store(monkeypatch, s3_setup):
-    bucket_name = "test-bucket"
     file_to_put = "LICENSE_NOT_HERE"
 
     with pytest.raises(FileNotFoundError):
@@ -474,5 +472,4 @@ def test_requirements_file():
 def test_fail_requirements_file_bad_delimiter():
     bad_requirements_file = "etc/tests/resources/test-bad-requirements-elyra.txt"
     with pytest.raises(ValueError):
-        list_dict = bootstrapper.OpUtil.package_list_to_dict(bad_requirements_file)
-
+        bootstrapper.OpUtil.package_list_to_dict(bad_requirements_file)
