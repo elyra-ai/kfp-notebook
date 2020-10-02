@@ -57,7 +57,7 @@ clean-test:
 	rm -fr .pytest_cache
 
 lint: ## check style with flake8
-	flake8 kfp tests
+	flake8 kfp_notebook etc
 
 test-dependencies:
 	@pip install -q -r test-requirements.txt
@@ -90,7 +90,7 @@ bdist:
 sdist:
 	python setup.py sdist
 
-dist: clean ## builds source and wheel package
+dist: clean lint ## builds source and wheel package
 	@make sdist
 	@make bdist
 	ls -l dist
