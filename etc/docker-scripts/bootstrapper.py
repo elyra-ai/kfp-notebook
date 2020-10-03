@@ -33,7 +33,7 @@ INOUT_SEPARATOR = ';'
 # https://stackoverflow.com/questions/39205527/can-you-annotate-return-type-when-value-is-instance-of-cls/39205612#39205612
 F = TypeVar('F', bound='FileOpBase')
 
-logger = logging.getLogger('kfp-notebook')
+logger = logging.getLogger('elyra')
 pipeline_name = None  # global used in formatted logging
 
 
@@ -345,10 +345,22 @@ class OpUtil(object):
         return parsed_args
 
     @classmethod
-    def log_operation_info(cls, action_clause: str, duration_secs: Optional[float] = None):
+    def log_operation_info(cls, action_clause: str, duration_secs: Optional[float] = None) -> None:
+        """Produces a formatted log INFO message used entirely for support purposes.
+
+        This method is intended to be called for any entries that should be captured across aggregated
+        log files to identify steps within a given pipeline and each of its operations.  As a result,
+        calls to this method should produce single-line entries in the log (no embedded newlines).
+        Each entry is prefixed with the pipeline name.
+
+        General logging should NOT use this method but use logger.<level>() statements directly.
+
+        :param action_clause: str representing the action that is being logged
+        :param duration_secs: optional float value representing the duration of the action being logged
+        """
         global pipeline_name
         duration_clause = f"({duration_secs:.3f} secs)" if duration_secs else ""
-        logger.info(f"kfp pipeline '{pipeline_name}' - {action_clause} {duration_clause}")
+        logger.info(f"{pipeline_name} - {action_clause} {duration_clause}")
 
 
 def main():
