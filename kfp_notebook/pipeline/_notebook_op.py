@@ -31,7 +31,7 @@ and have python3
 
 # Inputs and Outputs separator character.  If updated,
 # same-named variable in bootstrapper.py must be updated!
-INOUT_SEPARATOR= ';'
+INOUT_SEPARATOR = ';'
 
 KFP_NOTEBOOK_ORG = os.getenv("KFP_NOTEBOOK_ORG", "elyra-ai")
 KFP_NOTEBOOK_BRANCH = os.getenv("KFP_NOTEBOOK_BRANCH", "master" if 'dev' in __version__ else "v" + __version__)
@@ -47,7 +47,7 @@ class NotebookOp(ContainerOp):
                  cos_dependencies_archive: str,
                  pipeline_outputs: Optional[List[str]] = None,
                  pipeline_inputs: Optional[List[str]] = None,
-                 pipeline_envs: Optional[Dict[str,str]] = None,
+                 pipeline_envs: Optional[Dict[str, str]] = None,
                  requirements_url: str = None,
                  bootstrap_script_url: str = None,
                  emptydir_volume_size: str = None,
@@ -131,17 +131,16 @@ class NotebookOp(ContainerOp):
                                  '--cos-bucket {cos_bucket} '
                                  '--cos-directory "{cos_directory}" '
                                  '--cos-dependencies-archive "{cos_dependencies_archive}" '
-                                 '--file "{notebook}" '.format(
-                                    container_work_dir=self.container_work_dir,
-                                    bootscript_url=self.bootstrap_script_url,
-                                    reqs_url=self.requirements_url,
-                                    cos_endpoint=self.cos_endpoint,
-                                    cos_bucket=self.cos_bucket,
-                                    cos_directory=self.cos_directory,
-                                    cos_dependencies_archive=self.cos_dependencies_archive,
-                                    notebook=self.notebook,
-                                    python_user_lib_path_target=self.python_user_lib_path_target,
-                                    )
+                                 '--file "{notebook}" '
+                                 .format(container_work_dir=self.container_work_dir,
+                                         bootscript_url=self.bootstrap_script_url,
+                                         reqs_url=self.requirements_url,
+                                         cos_endpoint=self.cos_endpoint,
+                                         cos_bucket=self.cos_bucket,
+                                         cos_directory=self.cos_directory,
+                                         cos_dependencies_archive=self.cos_dependencies_archive,
+                                         notebook=self.notebook,
+                                         python_user_lib_path_target=self.python_user_lib_path_target)
                                  )
 
             if self.pipeline_inputs:
@@ -163,7 +162,7 @@ class NotebookOp(ContainerOp):
         # We must deal with the envs after the superclass initialization since these amend the
         # container attribute that isn't available until now.
         if self.pipeline_envs:
-            for key,value in self.pipeline_envs.items():  # Convert dict entries to format kfp needs
+            for key, value in self.pipeline_envs.items():  # Convert dict entries to format kfp needs
                 self.container.add_env_variable(V1EnvVar(name=key, value=value))
 
         # If crio volume size is found then assume kubeflow pipelines environment is using CRI-o as
@@ -182,7 +181,8 @@ class NotebookOp(ContainerOp):
                                                      value=self.python_user_lib_path + ':$PYTHONPATH'))
 
     def _get_file_name_with_extension(self, name, extension):
-        """ Simple function to construct a string filename
+        """
+        Simple function to construct a string filename
         Args:
             name: name of the file
             extension: extension to append to the name
@@ -200,6 +200,7 @@ class NotebookOp(ContainerOp):
         trimmed_artifact_list = []
         for artifact_name in pipeline_array:
             if INOUT_SEPARATOR in artifact_name:  # if INOUT_SEPARATOR is in name, throw since this is our separator
-                raise ValueError("Illegal character ({}) found in filename '{}'.".format(INOUT_SEPARATOR, artifact_name))
+                raise \
+                    ValueError("Illegal character ({}) found in filename '{}'.".format(INOUT_SEPARATOR, artifact_name))
             trimmed_artifact_list.append(artifact_name.strip())
         return INOUT_SEPARATOR.join(trimmed_artifact_list)
