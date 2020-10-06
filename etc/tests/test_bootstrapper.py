@@ -45,6 +45,7 @@ HTML_SHA256 = '4f717d3bbb41cb7b7d03814dee6639d3190e5b80f8a80b9af310b6109846d509'
 
 MINIO_HOST_PORT = os.getenv("MINIO_HOST_PORT", "127.0.0.1:9000")
 
+
 @pytest.fixture(scope='function')
 def s3_setup():
     bucket_name = "test-bucket"

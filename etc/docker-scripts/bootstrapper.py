@@ -138,7 +138,7 @@ class FileOpBase(ABC):
                                     object_name=object_to_get,
                                     file_path=file_to_get)
         duration = time.time() - t0
-        OpUtil.log_operation_info(f"downloaded {file_to_get} from bucket: {self.cos_bucket} object: {object_to_get}",
+        OpUtil.log_operation_info(f"downloaded {file_to_get} from bucket: {self.cos_bucket}, object: {object_to_get}",
                                   duration)
 
     def put_file_to_object_storage(self, file_to_upload: str, object_name: Optional[str] = None) -> None:
