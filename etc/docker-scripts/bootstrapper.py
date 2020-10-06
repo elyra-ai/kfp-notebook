@@ -34,7 +34,9 @@ INOUT_SEPARATOR = ';'
 F = TypeVar('F', bound='FileOpBase')
 
 logger = logging.getLogger('elyra')
+enable_pipeline_info = os.getenv('ELYRA_ENABLE_PIPELINE_INFO', 'true').lower() == 'true'
 pipeline_name = None  # global used in formatted logging
+operation_name = None  # global used in formatted logging
 
 
 class FileOpBase(ABC):
@@ -322,7 +324,7 @@ class OpUtil(object):
     @classmethod
     def parse_arguments(cls, args) -> dict:
         import argparse
-        global pipeline_name
+        global pipeline_name, operation_name
 
         logger.debug("Parsing Arguments.....")
         parser = argparse.ArgumentParser()
@@ -341,7 +343,11 @@ class OpUtil(object):
                             help='Directory in Volume to install python libraries into', required=False)
         parsed_args = vars(parser.parse_args(args))
 
-        pipeline_name = parsed_args.get('cos-directory')  # cos-directory is the pipeline name, set as global
+        # cos-directory is the pipeline name, set as global
+        pipeline_name = parsed_args.get('cos-directory')
+        # operation/node name is the basename of the non-suffixed filepath, set as global
+        operation_name = os.path.basename(os.path.splitext(parsed_args.get('filepath'))[0])
+
         return parsed_args
 
     @classmethod
@@ -358,15 +364,17 @@ class OpUtil(object):
         :param action_clause: str representing the action that is being logged
         :param duration_secs: optional float value representing the duration of the action being logged
         """
-        global pipeline_name
-        duration_clause = f"({duration_secs:.3f} secs)" if duration_secs else ""
-        logger.info(f"{pipeline_name} - {action_clause} {duration_clause}")
+        global pipeline_name, operation_name
+        if enable_pipeline_info:
+            duration_clause = f"({duration_secs:.3f} secs)" if duration_secs else ""
+            logger.info(f"'{pipeline_name}':'{operation_name}' - {action_clause} {duration_clause}")
 
 
 def main():
     # Configure logger format, level
-    logging.basicConfig(format='[%(levelname)1.1s %(asctime)s.%(msecs).03d %(name)s] %(message)s', level=logging.INFO)
-
+    logging.basicConfig(format='[%(levelname)1.1s %(asctime)s.%(msecs).03d] %(message)s',
+                        datefmt='%H:%M:%S',
+                        level=logging.INFO)
     # Setup packages and gather arguments
     input_params = OpUtil.parse_arguments(sys.argv[1:])
     OpUtil.log_operation_info("starting operation")

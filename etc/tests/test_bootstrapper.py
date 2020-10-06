@@ -43,11 +43,12 @@ import bootstrapper
 
 HTML_SHA256 = '4f717d3bbb41cb7b7d03814dee6639d3190e5b80f8a80b9af310b6109846d509'
 
+MINIO_HOST_PORT = os.getenv("MINIO_HOST_PORT", "127.0.0.1:9000")
 
 @pytest.fixture(scope='function')
 def s3_setup():
     bucket_name = "test-bucket"
-    cos_client = minio.Minio("127.0.0.1:9000",
+    cos_client = minio.Minio(MINIO_HOST_PORT,
                              access_key="minioadmin",
                              secret_key="minioadmin",
                              secure=False)
@@ -107,7 +108,7 @@ def main_method_setup_execution(monkeypatch, s3_setup, tmpdir, argument_dict):
 
 def _get_operation_instance(monkeypatch, s3_setup):
     config = {
-        'cos-endpoint': 'http://127.0.0.1:9000',
+        'cos-endpoint': 'http://' + MINIO_HOST_PORT,
         'cos-user': 'minioadmin',
         'cos-password': 'minioadmin',
         'cos-bucket': 'test-bucket',
@@ -125,7 +126,7 @@ def _get_operation_instance(monkeypatch, s3_setup):
 
 
 def test_main_method(monkeypatch, s3_setup, tmpdir):
-    argument_dict = {'cos-endpoint': 'http://127.0.0.1:9000',
+    argument_dict = {'cos-endpoint': 'http://' + MINIO_HOST_PORT,
                      'cos-bucket': 'test-bucket',
                      'cos-directory': 'test-directory',
                      'cos-dependencies-archive': 'test-archive.tgz',
@@ -137,7 +138,7 @@ def test_main_method(monkeypatch, s3_setup, tmpdir):
 
 
 def test_main_method_with_wildcard_outputs(monkeypatch, s3_setup, tmpdir):
-    argument_dict = {'cos-endpoint': 'http://127.0.0.1:9000',
+    argument_dict = {'cos-endpoint': 'http://' + MINIO_HOST_PORT,
                      'cos-bucket': 'test-bucket',
                      'cos-directory': 'test-directory',
                      'cos-dependencies-archive': 'test-archive.tgz',
@@ -149,7 +150,7 @@ def test_main_method_with_wildcard_outputs(monkeypatch, s3_setup, tmpdir):
 
 
 def test_main_method_with_dir_outputs(monkeypatch, s3_setup, tmpdir):
-    argument_dict = {'cos-endpoint': 'http://127.0.0.1:9000',
+    argument_dict = {'cos-endpoint': 'http://' + MINIO_HOST_PORT,
                      'cos-bucket': 'test-bucket',
                      'cos-directory': 'test-directory',
                      'cos-dependencies-archive': 'test-archive.tgz',
@@ -161,7 +162,7 @@ def test_main_method_with_dir_outputs(monkeypatch, s3_setup, tmpdir):
 
 
 def test_fail_bad_endpoint_main_method(monkeypatch, tmpdir):
-    argument_dict = {'cos-endpoint': '127.0.0.1:9000',
+    argument_dict = {'cos-endpoint': MINIO_HOST_PORT,
                      'cos-bucket': 'test-bucket',
                      'cos-directory': 'test-directory',
                      'cos-dependencies-archive': 'test-archive.tgz',
@@ -188,7 +189,7 @@ def test_fail_bad_endpoint_main_method(monkeypatch, tmpdir):
 
 
 def test_fail_bad_notebook_main_method(monkeypatch, s3_setup, tmpdir):
-    argument_dict = {'cos-endpoint': 'http://127.0.0.1:9000',
+    argument_dict = {'cos-endpoint': 'http://' + MINIO_HOST_PORT,
                      'cos-bucket': 'test-bucket',
                      'cos-directory': 'test-directory',
                      'cos-dependencies-archive': 'test-bad-archiveB.tgz',
