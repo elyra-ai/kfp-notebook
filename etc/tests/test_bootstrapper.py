@@ -18,7 +18,7 @@ import nbformat
 import pytest
 import mock
 import sys
-import subprocess
+import papermill
 import minio
 import os
 
@@ -220,7 +220,7 @@ def test_fail_bad_notebook_main_method(monkeypatch, s3_setup, tmpdir):
                          file_path="etc/tests/resources/test-bad-archiveB.tgz")
 
     with tmpdir.as_cwd():
-        with pytest.raises(subprocess.CalledProcessError):
+        with pytest.raises(papermill.exceptions.PapermillExecutionError):
             bootstrapper.main()
 
 

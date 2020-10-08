@@ -193,7 +193,9 @@ class NotebookFileOp(FileOpBase):
         try:
             OpUtil.log_operation_info(f"executing notebook using 'papermill {notebook} {notebook_output}'")
             t0 = time.time()
-            subprocess.run(['papermill', notebook, notebook_output], check=True)
+            # Really hate to do this but have to invoke Papermill via library as workaround
+            import papermill
+            papermill.execute_notebook(notebook, notebook_output)
             duration = time.time() - t0
             OpUtil.log_operation_info("notebook execution completed", duration)
 
@@ -269,7 +271,6 @@ class OpUtil(object):
     """Utility functions for preparing file execution."""
     @classmethod
     def package_install(cls, user_volume_path) -> None:
-
         OpUtil.log_operation_info("Installing packages")
         t0 = time.time()
         elyra_packages = cls.package_list_to_dict("requirements-elyra.txt")
@@ -298,7 +299,12 @@ class OpUtil(object):
         if to_install_list:
             if user_volume_path:
                 to_install_list.insert(0, '--target=' + user_volume_path)
-            subprocess.run([sys.executable, '-m', 'pip', 'install'] + to_install_list)
+                to_install_list.append('--no-cache-dir')
+
+            subprocess.run([sys.executable, '-m', 'pip', 'install'] + to_install_list, check=True)
+
+        if user_volume_path:
+            os.environ["PIP_CONFIG_FILE"] = user_volume_path + "/pip.conf"
 
         subprocess.run([sys.executable, '-m', 'pip', 'freeze'])
         duration = time.time() - t0
