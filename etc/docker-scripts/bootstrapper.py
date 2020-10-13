@@ -14,9 +14,11 @@
 # limitations under the License.
 #
 import glob
+import logging
 import os
 import subprocess
 import sys
+import time
 
 from abc import ABC, abstractmethod
 from packaging import version
@@ -30,6 +32,11 @@ INOUT_SEPARATOR = ';'
 # Setup forward reference for type hint on return from class factory method.  See
 # https://stackoverflow.com/questions/39205527/can-you-annotate-return-type-when-value-is-instance-of-cls/39205612#39205612
 F = TypeVar('F', bound='FileOpBase')
+
+logger = logging.getLogger('elyra')
+enable_pipeline_info = os.getenv('ELYRA_ENABLE_PIPELINE_INFO', 'true').lower() == 'true'
+pipeline_name = None  # global used in formatted logging
+operation_name = None  # global used in formatted logging
 
 
 class FileOpBase(ABC):
@@ -57,7 +64,7 @@ class FileOpBase(ABC):
         self.input_params = kwargs or []
         self.cos_endpoint = urlparse(self.input_params.get('cos-endpoint'))
         self.cos_bucket = self.input_params.get('cos-bucket')
-        # TODO check hardcoded false
+        # TODO(check hardcoded false)
         self.cos_client = minio.Minio(self.cos_endpoint.netloc,
                                       access_key=os.getenv('AWS_ACCESS_KEY_ID'),
                                       secret_key=os.getenv('AWS_SECRET_ACCESS_KEY'),
@@ -77,20 +84,21 @@ class FileOpBase(ABC):
         This method can be overridden by subclasses, although overrides should first
         call the superclass method.
         """
+        OpUtil.log_operation_info('processing dependencies')
+        t0 = time.time()
         archive_file = self.input_params.get('cos-dependencies-archive')
+
         self.get_file_from_object_storage(archive_file)
 
-        print('Processing dependencies........')
         inputs = self.input_params.get('inputs')
         if inputs:
             input_list = inputs.split(INOUT_SEPARATOR)
             for file in input_list:
                 self.get_file_from_object_storage(file.strip())
 
-        print("TAR Archive pulled from Object Storage.")
-        print("Unpacking........")
         subprocess.call(['tar', '-zxvf', archive_file])
-        print("Unpacking Complete.")
+        duration = time.time() - t0
+        OpUtil.log_operation_info("dependencies processed", duration)
 
     def process_outputs(self) -> None:
         """Process outputs
@@ -100,16 +108,18 @@ class FileOpBase(ABC):
         This method can be overridden by subclasses, although overrides should first
         call the superclass method.
         """
-        print('Processing outputs........')
+        OpUtil.log_operation_info('processing outputs')
+        t0 = time.time()
         outputs = self.input_params.get('outputs')
         if outputs:
             output_list = outputs.split(INOUT_SEPARATOR)
             for file in output_list:
                 self.process_output_file(file.strip())
+        duration = time.time() - t0
+        OpUtil.log_operation_info('outputs processed', duration)
 
     def get_object_storage_filename(self, filename: str) -> str:
-        """
-        Function to pre-pend cloud storage working dir to file name
+        """Function to pre-pend cloud storage working dir to file name
 
         :param filename: the local file
         :return: the full path of the object storage file
@@ -117,22 +127,23 @@ class FileOpBase(ABC):
         return os.path.join(self.input_params.get('cos-directory', ''), filename)
 
     def get_file_from_object_storage(self, file_to_get: str) -> None:
-        """
-        Utility function to get files from an object storage
+        """Utility function to get files from an object storage
 
         :param file_to_get: filename
         """
 
-        print('Get file {} from bucket {}'.format(file_to_get, self.cos_bucket))
         object_to_get = self.get_object_storage_filename(file_to_get)
-
+        t0 = time.time()
         self.cos_client.fget_object(bucket_name=self.cos_bucket,
                                     object_name=object_to_get,
                                     file_path=file_to_get)
+        duration = time.time() - t0
+        OpUtil.log_operation_info(f"downloaded {file_to_get} from bucket: {self.cos_bucket}, object: {object_to_get}",
+                                  duration)
 
     def put_file_to_object_storage(self, file_to_upload: str, object_name: Optional[str] = None) -> None:
-        """
-        Utility function to put files into an object storage
+        """Utility function to put files into an object storage
+
         :param file_to_upload: filename
         :param object_name: remote filename (used to rename)
         """
@@ -141,13 +152,14 @@ class FileOpBase(ABC):
         if not object_to_upload:
             object_to_upload = file_to_upload
 
-        print('Uploading file {} as {} to bucket {}'.format(file_to_upload, object_to_upload, self.cos_bucket))
-
         object_to_upload = self.get_object_storage_filename(object_to_upload)
-
+        t0 = time.time()
         self.cos_client.fput_object(bucket_name=self.cos_bucket,
                                     object_name=object_to_upload,
                                     file_path=file_to_upload)
+        duration = time.time() - t0
+        OpUtil.log_operation_info(f"uploaded {file_to_upload} to bucket: {self.cos_bucket} object: {object_to_upload}",
+                                  duration)
 
     def has_wildcard(self, filename):
         wildcards = ['*', '?']
@@ -178,30 +190,29 @@ class NotebookFileOp(FileOpBase):
         notebook_output = notebook_name + '-output.ipynb'
         notebook_html = notebook_name + '.html'
 
-        print("Executing notebook through Papermill: {} ==> {}".format(notebook, notebook_output))
         try:
+            OpUtil.log_operation_info(f"executing notebook using 'papermill {notebook} {notebook_output}'")
+            t0 = time.time()
             subprocess.run(['papermill', notebook, notebook_output], check=True)
+            duration = time.time() - t0
+            OpUtil.log_operation_info("notebook execution completed", duration)
 
             NotebookFileOp.convert_notebook_to_html(notebook_output, notebook_html)
-            print("Uploading result Notebook back to Object Storage")
             self.put_file_to_object_storage(notebook_output, notebook)
             self.put_file_to_object_storage(notebook_html)
-
             self.process_outputs()
         except Exception as ex:
             # log in case of errors
-            print("Unexpected error:", sys.exc_info()[0])
-            NotebookFileOp.convert_notebook_to_html(notebook_output, notebook_html)
+            logger.error("Unexpected error: {}".format(sys.exc_info()[0]))
 
-            print("Uploading errored Notebook back to Object Storage")
+            NotebookFileOp.convert_notebook_to_html(notebook_output, notebook_html)
             self.put_file_to_object_storage(notebook_output, notebook)
             self.put_file_to_object_storage(notebook_html)
             raise ex
 
     @staticmethod
     def convert_notebook_to_html(notebook_file: str, html_file: str) -> str:
-        """
-        Function to convert a Jupyter notebook file (.ipynb) into an html file
+        """Function to convert a Jupyter notebook file (.ipynb) into an html file
 
         :param notebook_file: object storage client
         :param html_file: name of what the html output file should be
@@ -210,7 +221,8 @@ class NotebookFileOp(FileOpBase):
         import nbconvert
         import nbformat
 
-        print("Converting from ipynb to html....")
+        OpUtil.log_operation_info(f"converting from {notebook_file} to {html_file}")
+        t0 = time.time()
         nb = nbformat.read(notebook_file, as_version=4)
         html_exporter = nbconvert.HTMLExporter()
         data, resources = html_exporter.from_notebook_node(nb)
@@ -218,6 +230,8 @@ class NotebookFileOp(FileOpBase):
             f.write(data)
             f.close()
 
+        duration = time.time() - t0
+        OpUtil.log_operation_info(f"{notebook_file} converted to {html_file}", duration)
         return html_file
 
 
@@ -230,21 +244,23 @@ class PythonFileOp(FileOpBase):
         python_script_name = python_script.replace('.py', '')
         python_script_output = python_script_name + '.log'
 
-        print("Executing Python Script : {} ==> {}".format(python_script, python_script_output))
         try:
+            OpUtil.log_operation_info(f"executing python script using "
+                                      f"'python3 {python_script}' to '{python_script_output}'")
+            t0 = time.time()
             with open(python_script_output, "w") as log_file:
                 subprocess.run(['python3', python_script], stdout=log_file, stderr=subprocess.STDOUT, check=True)
 
-            print("Uploading Python Script execution log back to Object Storage")
-            self.put_file_to_object_storage(python_script_output, python_script_output)
+            duration = time.time() - t0
+            OpUtil.log_operation_info("python script execution completed", duration)
 
+            self.put_file_to_object_storage(python_script_output, python_script_output)
             self.process_outputs()
         except Exception as ex:
             # log in case of errors
-            print("Unexpected error: {}".format(sys.exc_info()[0]))
-            print("Error details: {}".format(ex))
+            logger.error("Unexpected error: {}".format(sys.exc_info()[0]))
+            logger.error("Error details: {}".format(ex))
 
-            # print("Uploading Errored log back to Object Storage")
             self.put_file_to_object_storage(python_script_output, python_script_output)
             raise ex
 
@@ -254,6 +270,8 @@ class OpUtil(object):
     @classmethod
     def package_install(cls, user_volume_path) -> None:
 
+        OpUtil.log_operation_info("Installing packages")
+        t0 = time.time()
         elyra_packages = cls.package_list_to_dict("requirements-elyra.txt")
         current_packages = cls.package_list_to_dict("requirements-current.txt")
         to_install_list = []
@@ -261,21 +279,20 @@ class OpUtil(object):
         for package, ver in elyra_packages.items():
             if package in current_packages:
                 if "git+" in current_packages[package]:
-                    print("WARNING: Source package %s found already installed from %s. This may "
-                          "conflict with the required version: %s . Skipping..." %
-                          (package, current_packages[package], ver))
+                    logger.warning(f"WARNING: Source package {package} found already installed from "
+                                   f"{current_packages[package]}. This may conflict with the required "
+                                   f"version: {ver} . Skipping...")
                 elif isinstance(version.parse(current_packages[package]), version.LegacyVersion):
-                    print("WARNING: Package %s found with unsupported Legacy version "
-                          "scheme %s already installed. Skipping..." %
-                          (package, current_packages[package]))
+                    logger.warning(f"WARNING: Package {package} found with unsupported Legacy version "
+                                   f"scheme {current_packages[package]} already installed. Skipping...")
                 elif version.parse(ver) > version.parse(current_packages[package]):
-                    print("Updating %s package from version %s to %s..." % (package, current_packages[package], ver))
+                    logger.info(f"Updating {package} package from version {current_packages[package]} to {ver}...")
                     to_install_list.append(package + '==' + ver)
                 elif version.parse(ver) < version.parse(current_packages[package]):
-                    print("Newer %s package with version %s already installed. Skipping..." %
-                          (package, current_packages[package]))
+                    logger.info(f"Newer {package} package with version {current_packages[package]} "
+                                f"already installed. Skipping...")
             else:
-                print("Package not found. Installing %s package with version %s..." % (package, ver))
+                logger.info(f"Package not found. Installing {package} package with version {ver}...")
                 to_install_list.append(package + '==' + ver)
 
         if to_install_list:
@@ -284,7 +301,8 @@ class OpUtil(object):
             subprocess.run([sys.executable, '-m', 'pip', 'install'] + to_install_list)
 
         subprocess.run([sys.executable, '-m', 'pip', 'freeze'])
-        print("Package Installation Complete.....")
+        duration = time.time() - t0
+        OpUtil.log_operation_info("Packages installed", duration)
 
     @classmethod
     def package_list_to_dict(cls, filename: str) -> dict:
@@ -306,8 +324,9 @@ class OpUtil(object):
     @classmethod
     def parse_arguments(cls, args) -> dict:
         import argparse
+        global pipeline_name, operation_name
 
-        print("Parsing Arguments.....")
+        logger.debug("Parsing Arguments.....")
         parser = argparse.ArgumentParser()
         parser.add_argument('-e', '--cos-endpoint', dest="cos-endpoint", help='Cloud object storage endpoint',
                             required=True)
@@ -324,13 +343,42 @@ class OpUtil(object):
                             help='Directory in Volume to install python libraries into', required=False)
         parsed_args = vars(parser.parse_args(args))
 
+        # cos-directory is the pipeline name, set as global
+        pipeline_name = parsed_args.get('cos-directory')
+        # operation/node name is the basename of the non-suffixed filepath, set as global
+        operation_name = os.path.basename(os.path.splitext(parsed_args.get('filepath'))[0])
+
         return parsed_args
+
+    @classmethod
+    def log_operation_info(cls, action_clause: str, duration_secs: Optional[float] = None) -> None:
+        """Produces a formatted log INFO message used entirely for support purposes.
+
+        This method is intended to be called for any entries that should be captured across aggregated
+        log files to identify steps within a given pipeline and each of its operations.  As a result,
+        calls to this method should produce single-line entries in the log (no embedded newlines).
+        Each entry is prefixed with the pipeline name.
+
+        General logging should NOT use this method but use logger.<level>() statements directly.
+
+        :param action_clause: str representing the action that is being logged
+        :param duration_secs: optional float value representing the duration of the action being logged
+        """
+        global pipeline_name, operation_name
+        if enable_pipeline_info:
+            duration_clause = f"({duration_secs:.3f} secs)" if duration_secs else ""
+            logger.info(f"'{pipeline_name}':'{operation_name}' - {action_clause} {duration_clause}")
 
 
 def main():
-    global input_params
+    # Configure logger format, level
+    logging.basicConfig(format='[%(levelname)1.1s %(asctime)s.%(msecs).03d] %(message)s',
+                        datefmt='%H:%M:%S',
+                        level=logging.INFO)
     # Setup packages and gather arguments
     input_params = OpUtil.parse_arguments(sys.argv[1:])
+    OpUtil.log_operation_info("starting operation")
+    t0 = time.time()
     OpUtil.package_install(user_volume_path=input_params.get('user-volume-path'))
 
     # Create the appropriate instance, process dependencies and execute the operation
@@ -340,7 +388,8 @@ def main():
 
     file_op.execute()
 
-    print("Execution and Upload Complete.")
+    duration = time.time() - t0
+    OpUtil.log_operation_info("operation completed", duration)
 
 
 if __name__ == '__main__':
