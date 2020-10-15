@@ -56,7 +56,7 @@ image = 'tensorflow/tensorflow:latest'
 def run_notebook_op(op_name, notebook_path):
     
     notebook_op = NotebookOp(name=op_name,
-                             notebook=op_name,
+                             notebook=notebook_path,
                              cos_endpoint=cos_endpoint,
                              cos_bucket=cos_bucket,
                              cos_directory=cos_directory,
