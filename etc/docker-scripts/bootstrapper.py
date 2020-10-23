@@ -270,7 +270,7 @@ class NotebookFileOp(FileOpBase):
             # load file (JSON) and pick out language, if match, use first found
             with open(os.path.join(file, 'kernel.json')) as f:
                 kspec = json.load(f)
-                if kspec.get('language') == nb_kernel_lang:
+                if kspec.get('language').lower() == nb_kernel_lang.lower():
                     matched_kernel = os.path.basename(file)
                     logger.info(f"Matched kernel by language ({nb_kernel_lang}), using kernel "
                                 f"'{matched_kernel}' instead of the missing kernel '{nb_kernel_name}'.")

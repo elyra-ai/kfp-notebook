@@ -421,13 +421,14 @@ def test_find_best_kernel_lang(tmpdir, caplog):
     # "Copy" nb file to destination after updating the kernel name - forcing a language match
     nb = nbformat.read(source_nb_file, 4)
     nb.metadata.kernelspec['name'] = 'test-kernel'
+    nb.metadata.kernelspec['language'] = 'PYTHON'  # test case-insensitivity
     nbformat.write(nb, nb_file)
 
     with tmpdir.as_cwd():
         kernel_name = bootstrapper.NotebookFileOp.find_best_kernel(nb_file)
         assert kernel_name == 'python3'
         assert len(caplog.records) == 1
-        assert caplog.records[0].message.startswith("Matched kernel by language (python)")
+        assert caplog.records[0].message.startswith("Matched kernel by language (PYTHON)")
 
 
 def test_find_best_kernel_nomatch(tmpdir, caplog):
