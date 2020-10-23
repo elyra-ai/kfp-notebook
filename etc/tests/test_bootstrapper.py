@@ -14,13 +14,14 @@
 # limitations under the License.
 #
 
+import logging
+import minio
 import nbformat
+import os
+import papermill
 import pytest
 import mock
 import sys
-import papermill
-import minio
-import os
 
 from py_essentials import hashing as hs
 
@@ -397,6 +398,53 @@ def test_fail_bucket_put_file_object_store(monkeypatch, s3_setup):
         op = _get_operation_instance(monkeypatch, s3_setup)
         monkeypatch.setattr(op, "cos_bucket", bucket_name)
         op.put_file_to_object_storage(file_to_upload=file_to_put)
+
+
+def test_find_best_kernel_nb(tmpdir):
+    source_nb_file = os.path.join(os.getcwd(), "etc/tests/resources/test-notebookA.ipynb")
+    nb_file = os.path.join(tmpdir, "test-notebookA.ipynb")
+
+    # "Copy" nb file to destination - this test does not update the kernel or language.
+    nb = nbformat.read(source_nb_file, 4)
+    nbformat.write(nb, nb_file)
+
+    with tmpdir.as_cwd():
+        kernel_name = bootstrapper.NotebookFileOp.find_best_kernel(nb_file)
+        assert kernel_name == nb.metadata.kernelspec['name']
+
+
+def test_find_best_kernel_lang(tmpdir, caplog):
+    caplog.set_level(logging.INFO)
+    source_nb_file = os.path.join(os.getcwd(), "etc/tests/resources/test-notebookA.ipynb")
+    nb_file = os.path.join(tmpdir, "test-notebookA.ipynb")
+
+    # "Copy" nb file to destination after updating the kernel name - forcing a language match
+    nb = nbformat.read(source_nb_file, 4)
+    nb.metadata.kernelspec['name'] = 'test-kernel'
+    nbformat.write(nb, nb_file)
+
+    with tmpdir.as_cwd():
+        kernel_name = bootstrapper.NotebookFileOp.find_best_kernel(nb_file)
+        assert kernel_name == 'python3'
+        assert len(caplog.records) == 1
+        assert caplog.records[0].message.startswith("Matched kernel by language (python)")
+
+
+def test_find_best_kernel_nomatch(tmpdir, caplog):
+    source_nb_file = os.path.join(os.getcwd(), "etc/tests/resources/test-notebookA.ipynb")
+    nb_file = os.path.join(tmpdir, "test-notebookA.ipynb")
+
+    # "Copy" nb file to destination after updating the kernel name and language - forcing use of updated name
+    nb = nbformat.read(source_nb_file, 4)
+    nb.metadata.kernelspec['name'] = 'test-kernel'
+    nb.metadata.kernelspec['language'] = 'test-language'
+    nbformat.write(nb, nb_file)
+
+    with tmpdir.as_cwd():
+        kernel_name = bootstrapper.NotebookFileOp.find_best_kernel(nb_file)
+        assert kernel_name == 'test-kernel'
+        assert len(caplog.records) == 1
+        assert caplog.records[0].message.startswith("Reverting back to missing notebook kernel 'test-kernel'")
 
 
 def test_parse_arguments():
