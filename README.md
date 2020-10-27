@@ -32,7 +32,7 @@ The example below can easily be added to a `python script` or `jupyter notebook`
 ```python
 import os
 import kfp
-from notebook.pipeline import NotebookOp
+from kfp_notebook.pipeline import NotebookOp
 from kubernetes.client.models import V1EnvVar
 
 # KubeFlow Pipelines API Endpoint
@@ -44,7 +44,7 @@ cos_bucket = 'test-bucket'
 cos_username = 'test'
 cos_password = 'test123'
 cos_directory = 'test-directory' 
-cos_pull_archive = 'test-archive.tar.gz'
+cos_dependencies_archive = 'test-archive.tar.gz'
 
 # Inputs and Outputs
 inputs = []
@@ -60,7 +60,7 @@ def run_notebook_op(op_name, notebook_path):
                              cos_endpoint=cos_endpoint,
                              cos_bucket=cos_bucket,
                              cos_directory=cos_directory,
-                             cos_pull_archive=cos_pull_archive,
+                             cos_dependencies_archive=cos_dependencies_archive,
                              pipeline_outputs=outputs,
                              pipeline_inputs=inputs,
                              image=image)
