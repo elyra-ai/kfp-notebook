@@ -14,6 +14,7 @@
 # limitations under the License.
 #
 import glob
+import json
 import logging
 import os
 import subprocess
@@ -22,8 +23,12 @@ import time
 
 from abc import ABC, abstractmethod
 from packaging import version
+from pathlib import Path
+from tempfile import TemporaryFile
 from typing import Optional, Any, Type, TypeVar
+from urllib.parse import urljoin
 from urllib.parse import urlparse
+from urllib.parse import urlunparse
 
 # Inputs and Outputs separator character.  If updated,
 # same-named variable in _notebook_op.py must be updated!
@@ -117,6 +122,145 @@ class FileOpBase(ABC):
                 self.process_output_file(file.strip())
         duration = time.time() - t0
         OpUtil.log_operation_info('outputs processed', duration)
+
+    def process_metrics_and_metadata(self) -> None:
+        """Process metrics and metadata
+
+        This method exposes metrics/metadata that the processed
+        notebook | script produces in the KFP UI.
+
+        This method should not be overridden by subclasses.
+        """
+
+        OpUtil.log_operation_info('processing metrics and metadata')
+        t0 = time.time()
+
+        # Location where the KFP specific output files will be stored
+        # in the environment where the bootsrapper is running.
+        # Defaults to '/tmp' if not specified.
+        output_path = Path(os.getenv('ELYRA_WRITABLE_CONTAINER_DIR', '/tmp'))
+
+        # verify that output_path exists, is a directory
+        # and writable by creating a temporary file in that location
+        try:
+            with TemporaryFile(mode='w', dir=output_path) as t:
+                t.write('can write')
+        except Exception:
+            # output_path doesn't meet the requirements
+            # treat this as a non-fatal error and log a warning
+            logger.warning('Cannot create files in "{}".'
+                           .format(output_path))
+            OpUtil.log_operation_info('Aborted metrics and metadata processing',
+                                      time.time() - t0)
+            return
+
+        # Name of the proprietary KFP UI metadata file.
+        # Notebooks | scripts might (but don't have to) produce this file
+        # as documented in
+        # https://www.kubeflow.org/docs/pipelines/sdk/output-viewer/
+        # Each NotebookOp must declare this as an output file or
+        # the KFP UI won't pick up the information.
+        kfp_ui_metadata_filename = 'mlpipeline-ui-metadata.json'
+
+        # Name of the proprietary KFP metadata file.
+        # Notebooks | scripts might (but don't have to) produce this file
+        # as documented in
+        # https://www.kubeflow.org/docs/pipelines/sdk/pipelines-metrics/
+        # Each NotebookOp must declare this as an output file or
+        # the KFP UI won't pick up the information.
+        kfp_metrics_filename = 'mlpipeline-metrics.json'
+
+        # If the notebook | Python script produced one of the files
+        # copy it to the target location where KFP is looking for it.
+        for filename in [kfp_ui_metadata_filename, kfp_metrics_filename]:
+            try:
+                src = Path('.') / filename
+                logger.debug('Processing {} ...'.format(src))
+                # try to load the file, if one was created by the
+                # notebook or script
+                with open(src, 'r') as f:
+                    metadata = json.load(f)
+
+                # the file exists and contains valid JSON
+                logger.debug('File content: {}'.format(json.dumps(metadata)))
+
+                target = output_path / filename
+                # try to save the file in the destination location
+                with open(target, 'w') as f:
+                    json.dump(metadata, f)
+            except FileNotFoundError:
+                # The script | notebook didn't produce the file
+                # we are looking for. This is not an error condition
+                # that needs to be handled.
+                logger.debug('{} produced no file named {}'
+                             .format(self.filepath,
+                                     src))
+            except ValueError as ve:
+                # The file content could not be parsed. Log a warning
+                # and treat this as a non-fatal error.
+                logger.warning('Ignoring incompatible {} produced by {}: {} {}'.
+                               format(str(src),
+                                      self.filepath,
+                                      ve,
+                                      str(ve)))
+            except Exception as ex:
+                # Something is wrong with the user-generated metadata file.
+                # Log a warning and treat this as a non-fatal error.
+                logger.warning('Error processing {} produced by {}: {} {}'.
+                               format(str(src),
+                                      self.filepath,
+                                      ex,
+                                      str(ex)))
+
+        #
+        # Augment kfp_ui_metadata_filename with Elyra-specific information:
+        #  - link to object storage where input and output artifacts are
+        #    stored
+        ui_metadata_output = output_path / kfp_ui_metadata_filename
+        try:
+            # re-load the file
+            with open(ui_metadata_output, 'r') as f:
+                metadata = json.load(f)
+        except Exception:
+            # ignore all errors
+            metadata = {}
+
+        # Assure the 'output' property exists and is of the correct type
+        if metadata.get('outputs', None) is None or\
+           not isinstance(metadata['outputs'], list):
+            metadata['outputs'] = []
+
+        # Define HREF for COS bucket:
+        # <COS_URL>/<BUCKET_NAME>/<COS_DIRECTORY>
+        bucket_url =\
+            urljoin(urlunparse(self.cos_endpoint),
+                    '{}/{}/'
+                    .format(self.cos_bucket,
+                            self.input_params.get('cos-directory', '')))
+
+        # add Elyra metadata to 'outputs'
+        metadata['outputs'].append({
+            'storage': 'inline',
+            'source': '## Inputs for {}\n'
+                      '[{}]({})'
+                      .format(self.filepath,
+                              self.input_params['cos-dependencies-archive'],
+                              bucket_url),
+            'type': 'markdown'
+        })
+
+        # print the content of the augmented metadata file
+        logger.debug('Output UI metadata: {}'.format(json.dumps(metadata)))
+
+        logger.debug('Saving UI metadata file as {} ...'
+                     .format(ui_metadata_output))
+
+        # Save [updated] KFP UI metadata file
+        with open(ui_metadata_output, 'w') as f:
+            json.dump(metadata, f)
+
+        duration = time.time() - t0
+        OpUtil.log_operation_info('metrics and metadata processed', duration)
 
     def get_object_storage_filename(self, filename: str) -> str:
         """Function to pre-pend cloud storage working dir to file name
@@ -438,6 +582,9 @@ def main():
     file_op.process_dependencies()
 
     file_op.execute()
+
+    # Process notebook | script metrics and KFP UI metadata
+    file_op.process_metrics_and_metadata()
 
     duration = time.time() - t0
     OpUtil.log_operation_info("operation completed", duration)
