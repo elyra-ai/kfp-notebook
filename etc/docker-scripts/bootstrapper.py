@@ -51,8 +51,9 @@ class FileOpBase(ABC):
 
     @classmethod
     def get_instance(cls: Type[F], **kwargs: Any) -> F:
-        """Creates an appropriate subclass instance based on the extension 
-        of the filepath (-f) argument"""
+        """Creates an appropriate subclass instance based on the extension
+        of the filepath (-f) argument
+        """
 
         filepath = kwargs['filepath']
         if '.ipynb' in filepath:
@@ -130,7 +131,7 @@ class FileOpBase(ABC):
     def process_metrics(self) -> None:
         """Expose metrics and Elyra metadata in the KFP UI
 
-        When invoked this method produces a 
+        When invoked this method produces a
         https://www.kubeflow.org/docs/pipelines/sdk/output-viewer
         compatible metadata file, which esposes the following information
         for each pipeline node in the KFP UI:
