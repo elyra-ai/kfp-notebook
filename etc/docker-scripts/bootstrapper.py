@@ -14,6 +14,7 @@
 # limitations under the License.
 #
 import glob
+import json
 import logging
 import os
 import subprocess
@@ -23,18 +24,21 @@ import time
 from abc import ABC, abstractmethod
 from packaging import version
 from typing import Optional, Any, Type, TypeVar
+from urllib.parse import urljoin
 from urllib.parse import urlparse
+from urllib.parse import urlunparse
 
 # Inputs and Outputs separator character.  If updated,
 # same-named variable in _notebook_op.py must be updated!
 INOUT_SEPARATOR = ';'
 
-# Setup forward reference for type hint on return from class factory method.  See
+# Setup forward reference for type hint on return from class factory method.See
 # https://stackoverflow.com/questions/39205527/can-you-annotate-return-type-when-value-is-instance-of-cls/39205612#39205612
 F = TypeVar('F', bound='FileOpBase')
 
 logger = logging.getLogger('elyra')
-enable_pipeline_info = os.getenv('ELYRA_ENABLE_PIPELINE_INFO', 'true').lower() == 'true'
+enable_pipeline_info =\
+    os.getenv('ELYRA_ENABLE_PIPELINE_INFO', 'true').lower() == 'true'
 pipeline_name = None  # global used in formatted logging
 operation_name = None  # global used in formatted logging
 
@@ -47,7 +51,9 @@ class FileOpBase(ABC):
 
     @classmethod
     def get_instance(cls: Type[F], **kwargs: Any) -> F:
-        """Creates an appropriate subclass instance based on the extension of the filepath (-f) argument"""
+        """Creates an appropriate subclass instance based on the extension 
+        of the filepath (-f) argument"""
+
         filepath = kwargs['filepath']
         if '.ipynb' in filepath:
             return NotebookFileOp(**kwargs)
@@ -65,24 +71,26 @@ class FileOpBase(ABC):
         self.cos_endpoint = urlparse(self.input_params.get('cos-endpoint'))
         self.cos_bucket = self.input_params.get('cos-bucket')
         # TODO(check hardcoded false)
-        self.cos_client = minio.Minio(self.cos_endpoint.netloc,
-                                      access_key=os.getenv('AWS_ACCESS_KEY_ID'),
-                                      secret_key=os.getenv('AWS_SECRET_ACCESS_KEY'),
-                                      secure=False)
+        self.cos_client =\
+            minio.Minio(self.cos_endpoint.netloc,
+                        access_key=os.getenv('AWS_ACCESS_KEY_ID'),
+                        secret_key=os.getenv('AWS_SECRET_ACCESS_KEY'),
+                        secure=False)
 
     @abstractmethod
     def execute(self) -> None:
         """Execute the operation relative to derived class"""
-        raise NotImplementedError("Method 'execute()' must be implemented by subclasses!")
+        raise NotImplementedError("Method 'execute()' must be implemented'"
+                                  " by subclasses!")
 
     def process_dependencies(self) -> None:
         """Process dependencies
 
-        If a dependency archive is present, it will be downloaded from object storage
-        and expanded into the local directory.
+        If a dependency archive is present, it will be downloaded from
+        object storage and expanded into the local directory.
 
-        This method can be overridden by subclasses, although overrides should first
-        call the superclass method.
+        This method can be overridden by subclasses, although overrides
+        should first call the superclass method.
         """
         OpUtil.log_operation_info('processing dependencies')
         t0 = time.time()
@@ -103,10 +111,11 @@ class FileOpBase(ABC):
     def process_outputs(self) -> None:
         """Process outputs
 
-        If outputs have been specified, it will upload the appropriate files to object storage
+        If outputs have been specified, it will upload the appropriate files
+        to object storage
 
-        This method can be overridden by subclasses, although overrides should first
-        call the superclass method.
+        This method can be overridden by subclasses, although overrides should
+        first call the superclass method.
         """
         OpUtil.log_operation_info('processing outputs')
         t0 = time.time()
@@ -118,13 +127,82 @@ class FileOpBase(ABC):
         duration = time.time() - t0
         OpUtil.log_operation_info('outputs processed', duration)
 
+    def process_metrics(self) -> None:
+        """Expose metrics and Elyra metadata in the KFP UI
+
+        When invoked this method produces a 
+        https://www.kubeflow.org/docs/pipelines/sdk/output-viewer
+        compatible metadata file, which esposes the following information
+        for each pipeline node in the KFP UI:
+         - the name of the input file (e.g. notebook.ipynb)
+         - the name of the input archive (e.g. notebook...tar.gz)
+         - the location of the input archive on COS
+
+        There should be no need to override this method in subclasses
+        because the code is not file type specific.
+        """
+
+        OpUtil.log_operation_info('processing metrics and metadata')
+        t0 = time.time()
+
+        # name and location of the metadata file
+        # Each NotebookOp must declare this as an output file or
+        # the KFP UI won't pick up the information.
+        metadata_file = '/tmp/mlpipeline-ui-metadata.json'
+
+        try:
+            with open(metadata_file, 'r') as f:
+                metadata = json.load(f)
+        except FileNotFoundError:
+            # The node didn't generate a metadatafile, which is ok.
+            metadata = {}
+        except Exception as ex:
+            # Something is wrong with the user-generated metadata file.
+            logger.warning('Ignoring incompatible {} produced by {}: {} {}'.
+                           format(metadata_file,
+                                  self.filepath,
+                                  ex,
+                                  str(ex)))
+            metadata = {}
+
+        # Assure the output property exists and is of the correct type
+        if metadata.get('outputs', None) is None or\
+           not isinstance(metadata['outputs'], list):
+            metadata['outputs'] = []
+
+        # Define HREF for COS bucket:
+        # <COS_URL>/<BUCKET_NAME>/<COS_DIRECTORY>
+        bucket_url =\
+            urljoin(urlunparse(self.cos_endpoint),
+                    '{}/{}/'
+                    .format(self.cos_bucket,
+                            self.input_params.get('cos-directory', '')))
+
+        metadata['outputs'].append({
+            'storage': 'inline',
+            'source': '## Inputs for {}\n'
+                      '[{}]({})'
+                      .format(self.filepath,
+                              self.input_params['cos-dependencies-archive'],
+                              bucket_url),
+            'type': 'markdown'
+        })
+
+        # Save [updated] KFP UI metadata file
+        with open(metadata_file, 'w') as f:
+            json.dump(metadata, f)
+
+        duration = time.time() - t0
+        OpUtil.log_operation_info('metrics and metadata processed', duration)
+
     def get_object_storage_filename(self, filename: str) -> str:
         """Function to pre-pend cloud storage working dir to file name
 
         :param filename: the local file
         :return: the full path of the object storage file
         """
-        return os.path.join(self.input_params.get('cos-directory', ''), filename)
+        return os.path.join(self.input_params.get('cos-directory', ''),
+                            filename)
 
     def get_file_from_object_storage(self, file_to_get: str) -> None:
         """Utility function to get files from an object storage
@@ -141,7 +219,9 @@ class FileOpBase(ABC):
         OpUtil.log_operation_info(f"downloaded {file_to_get} from bucket: {self.cos_bucket}, object: {object_to_get}",
                                   duration)
 
-    def put_file_to_object_storage(self, file_to_upload: str, object_name: Optional[str] = None) -> None:
+    def put_file_to_object_storage(self,
+                                   file_to_upload: str,
+                                   object_name: Optional[str] = None) -> None:
         """Utility function to put files into an object storage
 
         :param file_to_upload: filename
@@ -166,7 +246,9 @@ class FileOpBase(ABC):
         return bool(any(c in filename for c in wildcards))
 
     def process_output_file(self, output_file):
-        """Puts the file to object storage.  Handles wildcards and directories. """
+        """Puts the file to object storage.
+           Handles wildcards and directories.
+           """
 
         matched_files = [output_file]
         if self.has_wildcard(output_file):  # explode the wildcarded file
@@ -197,11 +279,13 @@ class NotebookFileOp(FileOpBase):
             kernel_name = NotebookFileOp.find_best_kernel(notebook)
 
             import papermill
-            papermill.execute_notebook(notebook, notebook_output, kernel_name=kernel_name)
+            papermill.execute_notebook(notebook, notebook_output,
+                                       kernel_name=kernel_name)
             duration = time.time() - t0
             OpUtil.log_operation_info("notebook execution completed", duration)
 
-            NotebookFileOp.convert_notebook_to_html(notebook_output, notebook_html)
+            NotebookFileOp.convert_notebook_to_html(notebook_output,
+                                                    notebook_html)
             self.put_file_to_object_storage(notebook_output, notebook)
             self.put_file_to_object_storage(notebook_html)
             self.process_outputs()
@@ -209,7 +293,8 @@ class NotebookFileOp(FileOpBase):
             # log in case of errors
             logger.error("Unexpected error: {}".format(sys.exc_info()[0]))
 
-            NotebookFileOp.convert_notebook_to_html(notebook_output, notebook_html)
+            NotebookFileOp.convert_notebook_to_html(notebook_output,
+                                                    notebook_html)
             self.put_file_to_object_storage(notebook_output, notebook)
             self.put_file_to_object_storage(notebook_html)
             raise ex
@@ -440,6 +525,10 @@ def main():
     file_op.execute()
 
     duration = time.time() - t0
+
+    # Collect and attach metrics, if applicable
+    file_op.process_metrics()
+
     OpUtil.log_operation_info("operation completed", duration)
 
 
