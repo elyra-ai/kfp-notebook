@@ -14,6 +14,7 @@
 # limitations under the License.
 #
 
+import json
 import logging
 import minio
 import nbformat
@@ -161,6 +162,148 @@ def test_main_method_with_dir_outputs(monkeypatch, s3_setup, tmpdir):
                      'outputs': 'test-file',  # this is the directory that contains the outputs
                      'user-volume-path': None}
     main_method_setup_execution(monkeypatch, s3_setup, tmpdir, argument_dict)
+
+
+def test_process_metrics_method(monkeypatch, s3_setup, tmpdir):
+    argument_dict = {'cos-endpoint': 'http://' + MINIO_HOST_PORT,
+                     'cos-bucket': 'test-bucket',
+                     'cos-directory': 'test-directory',
+                     'cos-dependencies-archive': 'test-archive.tgz',
+                     'filepath': 'etc/tests/resources/test-notebookA.ipynb',
+                     'inputs': 'test-file.txt;test,file.txt',
+                     'outputs': 'test-file/test-file-copy.txt;test-file/test,file/test,file-copy.txt',
+                     'user-volume-path': None}
+
+    metadata_file = '/tmp/mlpipeline-ui-metadata.json'
+
+    # Scenario 1:
+    #   The node's notebook | script does not produce a metadata file.
+    #   Therefore the metadata file should only include Elyra content
+    #   after the node was processed.
+
+    os.remove(metadata_file)
+
+    main_method_setup_execution(monkeypatch, s3_setup, tmpdir, argument_dict)
+    # process_metrics generates a file named
+    # /tmp/mlpipeline-ui-metadata.json should now be present
+
+    try:
+        with open(metadata_file, 'r') as f:
+            metadata = json.load(f)
+            assert metadata.get('outputs') is not None
+            assert isinstance(metadata['outputs'], list)
+            assert len(metadata['outputs']) == 1
+            assert metadata['outputs'][0]['storage'] == 'inline'
+            assert metadata['outputs'][0]['type'] == 'markdown'
+            assert '{}/{}/{}'.format(argument_dict['cos-endpoint'],
+                                     argument_dict['cos-bucket'],
+                                     argument_dict['cos-directory']) \
+                in metadata['outputs'][0]['source']
+            assert argument_dict['cos-dependencies-archive']\
+                in metadata['outputs'][0]['source']
+
+    except Exception as ex:
+        # Potential reasons for failures:
+        # file not found, invalid JSON
+        print('Validation of "{}" failed: {}'.format(str(ex), ex))
+        assert False
+
+    # Scenario 2:
+    #   The node's notebook | script does produce a metadata file.
+    #   Therefore the metadata file should include Elyra content
+    #   and proprietary content after the node was processed.
+
+    os.remove(metadata_file)
+
+    #
+    # Simulate some custom metadata that the script | notebook produced
+    #
+    custom_metadata = {
+        'some_property': 'some property value',
+        'outputs': [
+            {
+                'source': 'gs://project/bucket/file.md',
+                'type': 'markdown'
+            }
+        ]
+    }
+
+    with open(metadata_file, 'w') as f:
+        json.dump(custom_metadata, f)
+
+    main_method_setup_execution(monkeypatch, s3_setup, tmpdir, argument_dict)
+    # /tmp/mlpipeline-ui-metadata.json should now have been updated
+
+    try:
+        with open(metadata_file, 'r') as f:
+            metadata = json.load(f)
+            assert metadata.get('some_property') is not None
+            assert metadata['some_property'] == custom_metadata['some_property']
+            assert metadata.get('outputs') is not None
+            assert isinstance(metadata['outputs'], list)
+            assert len(metadata['outputs']) == 2
+            for output in metadata['outputs']:
+                if output.get('storage') is not None:
+                    assert output['storage'] == 'inline'
+                    assert output['type'] == 'markdown'
+                    assert '{}/{}/{}'.format(argument_dict['cos-endpoint'],
+                                             argument_dict['cos-bucket'],
+                                             argument_dict['cos-directory']) \
+                        in output['source']
+                    assert argument_dict['cos-dependencies-archive']\
+                        in output['source']
+                else:
+                    assert output['type'] ==\
+                        custom_metadata['outputs'][0]['type']
+                    assert output['source'] ==\
+                        custom_metadata['outputs'][0]['source']
+
+    except Exception as ex:
+        # Potential reasons for failures:
+        # file not found, invalid JSON
+        print('Validation of "{}" failed: {}'.format(str(ex), ex))
+        assert False
+
+    # Scenario 3:
+    #   The node's notebook | script does produce an invalid metadata file.
+    #   Therefore the metadata file should only include Elyra content
+    #   after the node was processed.
+
+    os.remove(metadata_file)
+
+    #
+    # Populate the metadata file with some custom data that's not JSON
+    #
+
+    with open(metadata_file, 'w') as f:
+        f.write('I am not a valid JSON data structure')
+        f.write('1,2,3,4,5,6,7')
+
+    main_method_setup_execution(monkeypatch, s3_setup, tmpdir, argument_dict)
+
+    # process_metrics replaces the existing metadata file
+    # because its content cannot be merged
+
+    try:
+        with open(metadata_file, 'r') as f:
+            metadata = json.load(f)
+            assert metadata.get('outputs') is not None
+            assert isinstance(metadata['outputs'], list)
+            assert len(metadata['outputs']) == 1
+            assert metadata['outputs'][0]['storage'] == 'inline'
+            assert metadata['outputs'][0]['type'] == 'markdown'
+            assert '{}/{}/{}'.format(argument_dict['cos-endpoint'],
+                                     argument_dict['cos-bucket'],
+                                     argument_dict['cos-directory']) \
+                in metadata['outputs'][0]['source']
+            assert argument_dict['cos-dependencies-archive']\
+                in metadata['outputs'][0]['source']
+
+    except Exception as ex:
+        # Potential reasons for failures:
+        # file not found, invalid JSON
+        print('Validation of "{}" failed: {}'.format(str(ex), ex))
+        assert False
 
 
 def test_fail_bad_endpoint_main_method(monkeypatch, tmpdir):
