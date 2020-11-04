@@ -556,7 +556,7 @@ def test_find_best_kernel_nb(tmpdir):
     nb = nbformat.read(source_nb_file, 4)
     nbformat.write(nb, nb_file)
     print('#### test_find_best_kernel_nb #####')
-    print('TMPDIR: ' + tmpdir)
+    print('TMPDIR: ' + str(tmpdir))
     print('SOURCE: ' + source_nb_file)
     print('SOURCE SHA: ' + hs.fileChecksum(source_nb_file, "sha256"))
     print('TARGET: ' + nb_file)
@@ -580,7 +580,7 @@ def test_find_best_kernel_lang(tmpdir, caplog):
     nbformat.write(nb, nb_file)
 
     print('#### test_find_best_kernel_lang #####')
-    print('TMPDIR: ' + tmpdir)
+    print('TMPDIR: ' + str(tmpdir))
     print('SOURCE: ' + source_nb_file)
     print('SOURCE SHA: ' + hs.fileChecksum(source_nb_file, "sha256"))
     print('TARGET: ' + nb_file)
@@ -605,7 +605,7 @@ def test_find_best_kernel_nomatch(tmpdir, caplog):
     nbformat.write(nb, nb_file)
 
     print('#### test_find_best_kernel_nomatch #####')
-    print('TMPDIR: ' + tmpdir)
+    print('TMPDIR: ' + str(tmpdir))
     print('SOURCE: ' + source_nb_file)
     print('SOURCE SHA: ' + hs.fileChecksum(source_nb_file, "sha256"))
     print('TARGET: ' + nb_file)
