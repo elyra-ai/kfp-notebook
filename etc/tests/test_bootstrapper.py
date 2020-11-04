@@ -466,13 +466,18 @@ def test_package_installation_with_target_path(monkeypatch, virtualenv):
 
 def test_convert_notebook_to_html(tmpdir):
     notebook_file = os.getcwd() + "/etc/tests/resources/test-notebookA.ipynb"
+    print('notebook file: {}'.format(notebook_file))
+    print('notebook file sha256: {}'.format(hs.fileChecksum(notebook_file, "sha256")))
     notebook_output_html_file = "test-notebookA.html"
 
     with tmpdir.as_cwd():
         bootstrapper.NotebookFileOp.convert_notebook_to_html(notebook_file, notebook_output_html_file)
-
+        print('notebook file 2: {}'.format(notebook_file))
+        print('notebook file 2 sha256: {}'.format(hs.fileChecksum(notebook_file, "sha256")))
         assert os.path.isfile(notebook_output_html_file)
         assert hs.fileChecksum(notebook_output_html_file, "sha256") == HTML_SHA256
+        print(hs.fileChecksum(notebook_output_html_file, "sha256"))
+        assert False
 
 
 def test_fail_convert_notebook_to_html(tmpdir):
