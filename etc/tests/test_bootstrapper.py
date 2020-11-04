@@ -14,7 +14,7 @@
 # limitations under the License.
 #
 
-# import logging
+import logging
 import minio
 import nbformat
 import os
@@ -326,10 +326,10 @@ def test_convert_notebook_to_html(tmpdir):
     notebook_output_html_file = "test-notebookA.html"
 
     with tmpdir.as_cwd():
-        print(hs.fileChecksum(notebook_file, "sha256"))
+        print(hs.fileChecksum(notenotebook_filebook_output_html_file, "sha256"))
         bootstrapper.NotebookFileOp.convert_notebook_to_html(notebook_file, notebook_output_html_file)
         print(hs.fileChecksum(notebook_file, "sha256"))
-        print(hs.fileChecksum(notebook_output_html_file, "sha256"))
+        
         assert os.path.isfile(notebook_output_html_file)
         assert hs.fileChecksum(notebook_output_html_file, "sha256") == HTML_SHA256
 
@@ -403,15 +403,65 @@ def test_fail_bucket_put_file_object_store(monkeypatch, s3_setup):
 
 
 def test_find_best_kernel_nb(tmpdir):
-    pass
+    source_nb_file = os.path.join(os.getcwd(), "etc/tests/resources/test-notebookA.ipynb")
+    print(source_nb_file)
+    print(hs.fileChecksum(source_nb_file, "sha256"))
+    nb_file = os.path.join(tmpdir, "test-notebookA.ipynb")
+    print(nb_file)
+    print(hs.fileChecksum(nb_file, "sha256"))
+
+    # "Copy" nb file to destination - this test does not update the kernel or language.
+    nb = nbformat.read(source_nb_file, 4)
+    nbformat.write(nb, nb_file)
+
+    with tmpdir.as_cwd():
+        kernel_name = bootstrapper.NotebookFileOp.find_best_kernel(nb_file)
+        assert kernel_name == nb.metadata.kernelspec['name']
 
 
 def test_find_best_kernel_lang(tmpdir, caplog):
-    pass
+    caplog.set_level(logging.INFO)
+    source_nb_file = os.path.join(os.getcwd(), "etc/tests/resources/test-notebookA.ipynb")
+    nb_file = os.path.join(tmpdir, "test-notebookA.ipynb")
+    print(source_nb_file)
+    print(hs.fileChecksum(source_nb_file, "sha256"))
+    nb_file = os.path.join(tmpdir, "test-notebookA.ipynb")
+    print(nb_file)
+    print(hs.fileChecksum(nb_file, "sha256"))
+
+    # "Copy" nb file to destination after updating the kernel name - forcing a language match
+    nb = nbformat.read(source_nb_file, 4)
+    nb.metadata.kernelspec['name'] = 'test-kernel'
+    nb.metadata.kernelspec['language'] = 'PYTHON'  # test case-insensitivity
+    nbformat.write(nb, nb_file)
+
+    with tmpdir.as_cwd():
+        kernel_name = bootstrapper.NotebookFileOp.find_best_kernel(nb_file)
+        assert kernel_name == 'python3'
+        assert len(caplog.records) == 1
+        assert caplog.records[0].message.startswith("Matched kernel by language (PYTHON)")
 
 
 def test_find_best_kernel_nomatch(tmpdir, caplog):
-    pass
+    source_nb_file = os.path.join(os.getcwd(), "etc/tests/resources/test-notebookA.ipynb")
+    nb_file = os.path.join(tmpdir, "test-notebookA.ipynb")
+    print(source_nb_file)
+    print(hs.fileChecksum(source_nb_file, "sha256"))
+    nb_file = os.path.join(tmpdir, "test-notebookA.ipynb")
+    print(nb_file)
+    print(hs.fileChecksum(nb_file, "sha256"))
+
+    # "Copy" nb file to destination after updating the kernel name and language - forcing use of updated name
+    nb = nbformat.read(source_nb_file, 4)
+    nb.metadata.kernelspec['name'] = 'test-kernel'
+    nb.metadata.kernelspec['language'] = 'test-language'
+    nbformat.write(nb, nb_file)
+
+    with tmpdir.as_cwd():
+        kernel_name = bootstrapper.NotebookFileOp.find_best_kernel(nb_file)
+        assert kernel_name == 'test-kernel'
+        assert len(caplog.records) == 1
+        assert caplog.records[0].message.startswith("Reverting back to missing notebook kernel 'test-kernel'")
 
 
 def test_parse_arguments():
