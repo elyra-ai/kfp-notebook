@@ -14,7 +14,7 @@
 # limitations under the License.
 #
 
-import logging
+# import logging
 import minio
 import nbformat
 import os
