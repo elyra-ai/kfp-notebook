@@ -326,8 +326,10 @@ def test_convert_notebook_to_html(tmpdir):
     notebook_output_html_file = "test-notebookA.html"
 
     with tmpdir.as_cwd():
+        print(hs.fileChecksum(notebook_file, "sha256"))
         bootstrapper.NotebookFileOp.convert_notebook_to_html(notebook_file, notebook_output_html_file)
-
+        print(hs.fileChecksum(notebook_file, "sha256"))
+        print(hs.fileChecksum(notebook_output_html_file, "sha256"))
         assert os.path.isfile(notebook_output_html_file)
         assert hs.fileChecksum(notebook_output_html_file, "sha256") == HTML_SHA256
 
