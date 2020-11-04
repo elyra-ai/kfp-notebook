@@ -555,6 +555,13 @@ def test_find_best_kernel_nb(tmpdir):
     # "Copy" nb file to destination - this test does not update the kernel or language.
     nb = nbformat.read(source_nb_file, 4)
     nbformat.write(nb, nb_file)
+    print('#### test_find_best_kernel_nb #####')
+    print('TMPDIR: ' + tmpdir)
+    print('SOURCE: ' + source_nb_file)
+    print('SOURCE SHA: ' + hs.fileChecksum(source_nb_file, "sha256"))
+    print('TARGET: ' + nb_file)
+    print('TARGET SHA: ' + hs.fileChecksum(nb_file, "sha256"))
+    assert False
 
     with tmpdir.as_cwd():
         kernel_name = bootstrapper.NotebookFileOp.find_best_kernel(nb_file)
@@ -572,6 +579,14 @@ def test_find_best_kernel_lang(tmpdir, caplog):
     nb.metadata.kernelspec['language'] = 'PYTHON'  # test case-insensitivity
     nbformat.write(nb, nb_file)
 
+    print('#### test_find_best_kernel_lang #####')
+    print('TMPDIR: ' + tmpdir)
+    print('SOURCE: ' + source_nb_file)
+    print('SOURCE SHA: ' + hs.fileChecksum(source_nb_file, "sha256"))
+    print('TARGET: ' + nb_file)
+    print('TARGET SHA: ' + hs.fileChecksum(nb_file, "sha256"))
+    assert False
+
     with tmpdir.as_cwd():
         kernel_name = bootstrapper.NotebookFileOp.find_best_kernel(nb_file)
         assert kernel_name == 'python3'
@@ -588,6 +603,14 @@ def test_find_best_kernel_nomatch(tmpdir, caplog):
     nb.metadata.kernelspec['name'] = 'test-kernel'
     nb.metadata.kernelspec['language'] = 'test-language'
     nbformat.write(nb, nb_file)
+
+    print('#### test_find_best_kernel_nomatch #####')
+    print('TMPDIR: ' + tmpdir)
+    print('SOURCE: ' + source_nb_file)
+    print('SOURCE SHA: ' + hs.fileChecksum(source_nb_file, "sha256"))
+    print('TARGET: ' + nb_file)
+    print('TARGET SHA: ' + hs.fileChecksum(nb_file, "sha256"))
+    assert False
 
     with tmpdir.as_cwd():
         kernel_name = bootstrapper.NotebookFileOp.find_best_kernel(nb_file)
