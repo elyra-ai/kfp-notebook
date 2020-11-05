@@ -164,7 +164,12 @@ def test_main_method_with_dir_outputs(monkeypatch, s3_setup, tmpdir):
     main_method_setup_execution(monkeypatch, s3_setup, tmpdir, argument_dict)
 
 
-def test_process_metrics_method(monkeypatch, s3_setup, tmpdir):
+def test_process_metrics_method_no_metadata_file(monkeypatch, s3_setup, tmpdir):
+    """Test for process_metrics
+
+    Verifies that process_metrics produces a valid KFP UI metadata file if
+    the node's script | notebook did not generate this metadata file.
+    """
     argument_dict = {'cos-endpoint': 'http://' + MINIO_HOST_PORT,
                      'cos-bucket': 'test-bucket',
                      'cos-directory': 'test-directory',
@@ -175,11 +180,6 @@ def test_process_metrics_method(monkeypatch, s3_setup, tmpdir):
                      'user-volume-path': None}
 
     metadata_file = '/tmp/mlpipeline-ui-metadata.json'
-
-    # Scenario 1:
-    #   The node's notebook | script does not produce a metadata file.
-    #   Therefore the metadata file should only include Elyra content
-    #   after the node was processed.
 
     os.remove(metadata_file)
 
@@ -208,10 +208,24 @@ def test_process_metrics_method(monkeypatch, s3_setup, tmpdir):
         print('Validation of "{}" failed: {}'.format(str(ex), ex))
         assert False
 
-    # Scenario 2:
-    #   The node's notebook | script does produce a metadata file.
-    #   Therefore the metadata file should include Elyra content
-    #   and proprietary content after the node was processed.
+
+def test_process_metrics_method_valid_metadata_file(monkeypatch, s3_setup, tmpdir):
+    """Test for process_metrics
+
+    Verifies that process_metrics produces a valid KFP UI metadata file if
+    the node's script | notebook did already generate this metadata file. The
+    content of that file should be preserved.
+    """
+    argument_dict = {'cos-endpoint': 'http://' + MINIO_HOST_PORT,
+                     'cos-bucket': 'test-bucket',
+                     'cos-directory': 'test-directory',
+                     'cos-dependencies-archive': 'test-archive.tgz',
+                     'filepath': 'etc/tests/resources/test-notebookA.ipynb',
+                     'inputs': 'test-file.txt;test,file.txt',
+                     'outputs': 'test-file/test-file-copy.txt;test-file/test,file/test,file-copy.txt',
+                     'user-volume-path': None}
+
+    metadata_file = '/tmp/mlpipeline-ui-metadata.json'
 
     os.remove(metadata_file)
 
@@ -264,10 +278,24 @@ def test_process_metrics_method(monkeypatch, s3_setup, tmpdir):
         print('Validation of "{}" failed: {}'.format(str(ex), ex))
         assert False
 
-    # Scenario 3:
-    #   The node's notebook | script does produce an invalid metadata file.
-    #   Therefore the metadata file should only include Elyra content
-    #   after the node was processed.
+
+def test_process_metrics_method_invalid_metadata_file(monkeypatch, s3_setup, tmpdir):
+    """Test for process_metrics
+
+    Verifies that process_metrics produces a valid KFP UI metadata file if
+    the node's script | notebook generate an invalid metadata file, which
+    cannot be merged and is therefore overwritten.
+    """
+    argument_dict = {'cos-endpoint': 'http://' + MINIO_HOST_PORT,
+                     'cos-bucket': 'test-bucket',
+                     'cos-directory': 'test-directory',
+                     'cos-dependencies-archive': 'test-archive.tgz',
+                     'filepath': 'etc/tests/resources/test-notebookA.ipynb',
+                     'inputs': 'test-file.txt;test,file.txt',
+                     'outputs': 'test-file/test-file-copy.txt;test-file/test,file/test,file-copy.txt',
+                     'user-volume-path': None}
+
+    metadata_file = '/tmp/mlpipeline-ui-metadata.json'
 
     os.remove(metadata_file)
 
