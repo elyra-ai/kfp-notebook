@@ -117,7 +117,9 @@ class NotebookOp(ContainerOp):
                                     'kfp-notebook/{branch}/etc/requirements-elyra.txt'.\
                 format(org=KFP_NOTEBOOK_ORG, branch=KFP_NOTEBOOK_BRANCH)
 
-        if not kwargs.get('name'):
+        if 'name' not in kwargs:
+            raise TypeError("You need to provide a name for the operation.")
+        elif not kwargs.get('name'):
             raise ValueError("You need to provide a name for the operation.")
 
         if 'image' not in kwargs:
