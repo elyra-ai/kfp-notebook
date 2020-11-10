@@ -201,18 +201,6 @@ class NotebookOp(ContainerOp):
             self.container.add_env_variable(V1EnvVar(name='PYTHONPATH',
                                                      value=self.python_user_lib_path))
 
-    def _get_file_name_with_extension(self, name):
-        """
-        Simple function to construct a string filename
-        Args:
-            name: name of the file
-            extension: extension to append to the name
-
-        Returns:
-            name_with_extension: string filename
-        """
-        return os.path.basename(name)
-
     def _artifact_list_to_str(self, pipeline_array):
         trimmed_artifact_list = []
         for artifact_name in pipeline_array:
