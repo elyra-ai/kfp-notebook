@@ -71,7 +71,7 @@ class NotebookOp(ContainerOp):
         """
 
         self.notebook = notebook
-        self.notebook_name = self._get_file_name_with_extension(notebook, 'ipynb')
+        self.notebook_name = self._get_file_name_with_extension(notebook)
         self.cos_endpoint = cos_endpoint
         self.cos_bucket = cos_bucket
         self.cos_directory = cos_directory
@@ -198,7 +198,7 @@ class NotebookOp(ContainerOp):
             self.container.add_env_variable(V1EnvVar(name='PYTHONPATH',
                                                      value=self.python_user_lib_path))
 
-    def _get_file_name_with_extension(self, name, extension):
+    def _get_file_name_with_extension(self, name):
         """
         Simple function to construct a string filename
         Args:
@@ -208,11 +208,7 @@ class NotebookOp(ContainerOp):
         Returns:
             name_with_extension: string filename
         """
-        name_with_extension = name
-        if extension not in name_with_extension:
-            name_with_extension = '{}.{}'.format(name, extension)
-
-        return name_with_extension
+        return os.path.basename(name)
 
     def _artifact_list_to_str(self, pipeline_array):
         trimmed_artifact_list = []
