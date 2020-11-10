@@ -71,7 +71,7 @@ class NotebookOp(ContainerOp):
         """
 
         self.notebook = notebook
-        self.notebook_name = self._get_file_name_with_extension(notebook, 'ipynb')
+        self.notebook_name = os.path.basename(notebook)
         self.cos_endpoint = cos_endpoint
         self.cos_bucket = cos_bucket
         self.cos_directory = cos_directory
@@ -116,6 +116,11 @@ class NotebookOp(ContainerOp):
             self.requirements_url = 'https://raw.githubusercontent.com/{org}/' \
                                     'kfp-notebook/{branch}/etc/requirements-elyra.txt'.\
                 format(org=KFP_NOTEBOOK_ORG, branch=KFP_NOTEBOOK_BRANCH)
+
+        if 'name' not in kwargs:
+            raise TypeError("You need to provide a name for the operation.")
+        elif not kwargs.get('name'):
+            raise ValueError("You need to provide a name for the operation.")
 
         if 'image' not in kwargs:
             raise ValueError("You need to provide an image.")
@@ -197,22 +202,6 @@ class NotebookOp(ContainerOp):
             # Append to PYTHONPATH location of elyra dependencies in installed in Volume
             self.container.add_env_variable(V1EnvVar(name='PYTHONPATH',
                                                      value=self.python_user_lib_path))
-
-    def _get_file_name_with_extension(self, name, extension):
-        """
-        Simple function to construct a string filename
-        Args:
-            name: name of the file
-            extension: extension to append to the name
-
-        Returns:
-            name_with_extension: string filename
-        """
-        name_with_extension = name
-        if extension not in name_with_extension:
-            name_with_extension = '{}.{}'.format(name, extension)
-
-        return name_with_extension
 
     def _artifact_list_to_str(self, pipeline_array):
         trimmed_artifact_list = []
