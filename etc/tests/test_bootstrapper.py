@@ -201,7 +201,8 @@ def test_process_metrics_method_no_metadata_file(monkeypatch, s3_setup, tmpdir):
                 in metadata['outputs'][0]['source']
             assert argument_dict['cos-dependencies-archive']\
                 in metadata['outputs'][0]['source']
-
+    except AssertionError:
+        raise
     except Exception as ex:
         # Potential reasons for failures:
         # file not found, invalid JSON
@@ -225,9 +226,10 @@ def test_process_metrics_method_valid_metadata_file(monkeypatch, s3_setup, tmpdi
                      'outputs': 'test-file/test-file-copy.txt;test-file/test,file/test,file-copy.txt',
                      'user-volume-path': None}
 
-    metadata_file = '/tmp/mlpipeline-ui-metadata.json'
+    input_metadata_file = 'mlpipeline-ui-metadata.json'
+    output_metadata_file = '/tmp/mlpipeline-ui-metadata.json'
 
-    os.remove(metadata_file)
+    os.remove(output_metadata_file)
 
     #
     # Simulate some custom metadata that the script | notebook produced
@@ -242,14 +244,15 @@ def test_process_metrics_method_valid_metadata_file(monkeypatch, s3_setup, tmpdi
         ]
     }
 
-    with open(metadata_file, 'w') as f:
-        json.dump(custom_metadata, f)
+    with tmpdir.as_cwd():
+        with open(input_metadata_file, 'w') as f:
+            json.dump(custom_metadata, f)
 
     main_method_setup_execution(monkeypatch, s3_setup, tmpdir, argument_dict)
     # /tmp/mlpipeline-ui-metadata.json should now have been updated
 
     try:
-        with open(metadata_file, 'r') as f:
+        with open(output_metadata_file, 'r') as f:
             metadata = json.load(f)
             assert metadata.get('some_property') is not None
             assert metadata['some_property'] == custom_metadata['some_property']
@@ -271,7 +274,8 @@ def test_process_metrics_method_valid_metadata_file(monkeypatch, s3_setup, tmpdi
                         custom_metadata['outputs'][0]['type']
                     assert output['source'] ==\
                         custom_metadata['outputs'][0]['source']
-
+    except AssertionError:
+        raise
     except Exception as ex:
         # Potential reasons for failures:
         # file not found, invalid JSON
@@ -295,17 +299,19 @@ def test_process_metrics_method_invalid_metadata_file(monkeypatch, s3_setup, tmp
                      'outputs': 'test-file/test-file-copy.txt;test-file/test,file/test,file-copy.txt',
                      'user-volume-path': None}
 
-    metadata_file = '/tmp/mlpipeline-ui-metadata.json'
+    input_metadata_file = 'mlpipeline-ui-metadata.json'
+    output_metadata_file = '/tmp/mlpipeline-ui-metadata.json'
 
-    os.remove(metadata_file)
+    os.remove(output_metadata_file)
 
     #
     # Populate the metadata file with some custom data that's not JSON
     #
 
-    with open(metadata_file, 'w') as f:
-        f.write('I am not a valid JSON data structure')
-        f.write('1,2,3,4,5,6,7')
+    with tmpdir.as_cwd():
+        with open(input_metadata_file, 'w') as f:
+            f.write('I am not a valid JSON data structure')
+            f.write('1,2,3,4,5,6,7')
 
     main_method_setup_execution(monkeypatch, s3_setup, tmpdir, argument_dict)
 
@@ -313,7 +319,7 @@ def test_process_metrics_method_invalid_metadata_file(monkeypatch, s3_setup, tmp
     # because its content cannot be merged
 
     try:
-        with open(metadata_file, 'r') as f:
+        with open(output_metadata_file, 'r') as f:
             metadata = json.load(f)
             assert metadata.get('outputs') is not None
             assert isinstance(metadata['outputs'], list)
@@ -326,7 +332,8 @@ def test_process_metrics_method_invalid_metadata_file(monkeypatch, s3_setup, tmp
                 in metadata['outputs'][0]['source']
             assert argument_dict['cos-dependencies-archive']\
                 in metadata['outputs'][0]['source']
-
+    except AssertionError:
+        raise
     except Exception as ex:
         # Potential reasons for failures:
         # file not found, invalid JSON
