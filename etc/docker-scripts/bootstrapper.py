@@ -160,7 +160,11 @@ class FileOpBase(ABC):
             with open(src, 'r') as f:
                 metadata = json.load(f)
         except FileNotFoundError:
-            # The node didn't generate a KFP UI metadata file, which is ok.
+            # The script | notebook didn't produce the file
+            # we are looking for.
+            logger.debug('{} produced no file named {}'
+                         .format(self.filepath,
+                                 src))
             metadata = {}
         except Exception as ex:
             # Something is wrong with the user-generated metadata file.
@@ -210,7 +214,7 @@ class FileOpBase(ABC):
         # (https://www.kubeflow.org/docs/pipelines/sdk/pipelines-metrics/)
         # Each NotebookOp must declare this as an output file or
         # the KFP UI won't pick up the information.
-        kfp_metadata_filename = 'mlpipeline-metadata.json'
+        kfp_metadata_filename = 'mlpipeline-metrics.json'
 
         try:
             # try to load the metadata file, if one was produced by the
@@ -242,8 +246,11 @@ class FileOpBase(ABC):
                 json.dump(metadata, f)
 
         except FileNotFoundError:
-            # nothing to do
-            pass
+            # The script | notebook didn't produce the file
+            # we are looking for.
+            logger.debug('{} produced no file named {}'
+                         .format(self.filepath,
+                                 src))
         except ValueError:
             # already handled
             pass
