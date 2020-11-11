@@ -24,6 +24,7 @@ import time
 from abc import ABC, abstractmethod
 from packaging import version
 from pathlib import Path
+from tempfile import TemporaryFile
 from typing import Optional, Any, Type, TypeVar
 from urllib.parse import urljoin
 from urllib.parse import urlparse
@@ -146,6 +147,20 @@ class FileOpBase(ABC):
 
         # Location where the KFP specific output files will be stored
         output_path = Path('/tmp')
+
+        # verify that output_path exists, is a directory
+        # and writable by creating a temporary file in that location
+        try:
+            with TemporaryFile(mode='w', dir=output_path) as t:
+                t.write('1')
+        except Exception:
+            # output_path doesn't meet the requirements
+            # treat this as a non-fatal error and log a warning
+            logger.warning('Cannot create files in "{}".'
+                           .format(output_path))
+            OpUtil.log_operation_info('Aborted metrics and metadata processing',
+                                      time.time() - t0)
+            return
 
         # Name of the proprietary KFP UI metadata file.
         # Each NotebookOp must declare this as an output file or
