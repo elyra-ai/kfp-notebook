@@ -166,6 +166,17 @@ def test_main_method_with_dir_outputs(monkeypatch, s3_setup, tmpdir):
     main_method_setup_execution(monkeypatch, s3_setup, tmpdir, argument_dict)
 
 
+def is_writable_dir(path):
+    """Helper method determines whether 'path' is a writable directory
+    """
+    try:
+        with TemporaryFile(mode='w', dir=path) as t:
+            t.write('1')
+        return True
+    except Exception:
+        return False
+
+
 def test_process_metrics_method_no_metadata_file(monkeypatch, s3_setup, tmpdir):
     """Test for process_metrics
 
@@ -182,13 +193,7 @@ def test_process_metrics_method_no_metadata_file(monkeypatch, s3_setup, tmpdir):
                      'user-volume-path': None}
 
     output_path = Path('/tmp')
-
-    # verify that output_path exists, is a directory
-    # and writable by creating a temporary file in that location
-    try:
-        with TemporaryFile(mode='w', dir=output_path) as t:
-            t.write('1')
-    except Exception:
+    if is_writable_dir(output_path) is False:
         pytest.skip('Not supported in this environment')
 
     metadata_file = output_path / 'mlpipeline-ui-metadata.json'
@@ -239,13 +244,7 @@ def test_process_metrics_method_valid_metadata_file(monkeypatch, s3_setup, tmpdi
                      'user-volume-path': None}
 
     output_path = Path('/tmp')
-
-    # verify that output_path exists, is a directory
-    # and writable by creating a temporary file in that location
-    try:
-        with TemporaryFile(mode='w', dir=output_path) as t:
-            t.write('1')
-    except Exception:
+    if is_writable_dir(output_path) is False:
         pytest.skip('Not supported in this environment')
 
     input_metadata_file = 'mlpipeline-ui-metadata.json'
@@ -322,13 +321,7 @@ def test_process_metrics_method_invalid_metadata_file(monkeypatch, s3_setup, tmp
                      'user-volume-path': None}
 
     output_path = Path('/tmp')
-
-    # verify that output_path exists, is a directory
-    # and writable by creating a temporary file in that location
-    try:
-        with TemporaryFile(mode='w', dir=output_path) as t:
-            t.write('1')
-    except Exception:
+    if is_writable_dir(output_path) is False:
         pytest.skip('Not supported in this environment')
 
     input_metadata_file = 'mlpipeline-ui-metadata.json'

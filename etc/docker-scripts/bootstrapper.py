@@ -123,36 +123,20 @@ class FileOpBase(ABC):
         duration = time.time() - t0
         OpUtil.log_operation_info('outputs processed', duration)
 
-    def process_metrics(self) -> None:
-        """Expose metrics and    metadata in the KFP UI
-
-        When invoked this method produces a
-        https://www.kubeflow.org/docs/pipelines/sdk/output-viewer
-        compatible metadata file, which esposes the following information
-        for each pipeline node in the KFP UI:
-         - the name of the input file (e.g. notebook.ipynb)
-         - the name of the input archive (e.g. notebook...tar.gz)
-         - the location of the input archive on COS
-
-        If the notebook | script produced a metrics file it is also
-        exposed in the KFP UI:
-        https://www.kubeflow.org/docs/pipelines/sdk/pipelines-metrics/
-
-        There should be no need to override this method in subclasses
-        because the code is not file type specific.
-        """
+    def process_metrics_and_metadata(self) -> None:
 
         OpUtil.log_operation_info('processing metrics and metadata')
         t0 = time.time()
 
         # Location where the KFP specific output files will be stored
+        # in the environment where the bootsrapper is running
         output_path = Path('/tmp')
 
         # verify that output_path exists, is a directory
         # and writable by creating a temporary file in that location
         try:
             with TemporaryFile(mode='w', dir=output_path) as t:
-                t.write('1')
+                t.write('can write')
         except Exception:
             # output_path doesn't meet the requirements
             # treat this as a non-fatal error and log a warning
@@ -163,36 +147,77 @@ class FileOpBase(ABC):
             return
 
         # Name of the proprietary KFP UI metadata file.
+        # Notebooks | scripts might (but don't have to) produce this file
+        # as documented in
+        # https://www.kubeflow.org/docs/pipelines/sdk/output-viewer/
         # Each NotebookOp must declare this as an output file or
         # the KFP UI won't pick up the information.
         kfp_ui_metadata_filename = 'mlpipeline-ui-metadata.json'
 
+        # Name of the proprietary KFP metadata file.
+        # Notebooks | scripts might (but don't have to) produce this file
+        # as documented in
+        # https://www.kubeflow.org/docs/pipelines/sdk/pipelines-metrics/
+        # Each NotebookOp must declare this as an output file or
+        # the KFP UI won't pick up the information.
+        kfp_metrics_filename = 'mlpipeline-metrics.json'
+
+        # If the notebook | Python script produced one of the files
+        # copy it to the target location where KFP is looking for it.
+        for filename in [kfp_ui_metadata_filename, kfp_metrics_filename]:
+            try:
+                src = Path('.') / filename
+                logger.debug('Processing {} ...'.format(src))
+                # try to load the file, if one was created by the
+                # notebook or script
+                with open(src, 'r') as f:
+                    metadata = json.load(f)
+
+                # the file exists and contains valid JSON
+                logger.debug('File content: {}'.format(json.dumps(metadata)))
+
+                target = output_path / filename
+                # try to save the file in the destination location
+                with open(target, 'w') as f:
+                    json.dump(metadata, f)
+            except FileNotFoundError:
+                # The script | notebook didn't produce the file
+                # we are looking for. This is not an error condition
+                # that needs to be handled.
+                logger.debug('{} produced no file named {}'
+                             .format(self.filepath,
+                                     src))
+            except ValueError as ve:
+                # The file content could not be parsed. Log a warning
+                # and treat this as a non-fatal error.
+                logger.warning('Ignoring incompatible {} produced by {}: {} {}'.
+                               format(str(src),
+                                      self.filepath,
+                                      ve,
+                                      str(ve)))
+            except Exception as ex:
+                # Something is wrong with the user-generated metadata file.
+                # Log a warning and treat this as a non-fatal error.
+                logger.warning('Error processing {} produced by {}: {} {}'.
+                               format(str(src),
+                                      self.filepath,
+                                      ex,
+                                      str(ex)))
+
+        #
+        # Augment kfp_ui_metadata_filename with Elyra-specific information:
+        #  - link to object storage where input and output artifacts are
+        #    stored
+        ui_metadata_output = output_path / kfp_ui_metadata_filename
         try:
-            # try to load the metadata file, if one was produced by the
-            # notebok or script
-            src = Path('.') / kfp_ui_metadata_filename
-            logger.debug('Loading UI metadata from {}'.format(src))
-            with open(src, 'r') as f:
+            # re-load the file
+            with open(ui_metadata_output, 'r') as f:
                 metadata = json.load(f)
-        except FileNotFoundError:
-            # The script | notebook didn't produce the file
-            # we are looking for.
-            logger.debug('{} produced no file named {}'
-                         .format(self.filepath,
-                                 src))
-            metadata = {}
-        except Exception as ex:
-            # Something is wrong with the user-generated metadata file.
-            logger.warning('Ignoring incompatible {} produced by {}: {} {}'.
-                           format(str(src),
-                                  self.filepath,
-                                  ex,
-                                  str(ex)))
+        except Exception:
+            # ignore all errors
             metadata = {}
 
-        logger.debug('Input UI metadata file: {}'.format(json.dumps(metadata)))
-
-        # Assure the output property exists and is of the correct type
+        # Assure the 'output' property exists and is of the correct type
         if metadata.get('outputs', None) is None or\
            not isinstance(metadata['outputs'], list):
             metadata['outputs'] = []
@@ -205,6 +230,7 @@ class FileOpBase(ABC):
                     .format(self.cos_bucket,
                             self.input_params.get('cos-directory', '')))
 
+        # add Elyra metadata to 'outputs'
         metadata['outputs'].append({
             'storage': 'inline',
             'source': '## Inputs for {}\n'
@@ -215,68 +241,15 @@ class FileOpBase(ABC):
             'type': 'markdown'
         })
 
-        logger.debug('Output UI metadata file: {}'.format(json.dumps(metadata)))
+        # print the content of the augmented metadata file
+        logger.debug('Output UI metadata: {}'.format(json.dumps(metadata)))
 
-        ui_metadata_output = output_path / kfp_ui_metadata_filename
-
-        logger.debug('Saving UI metadata file in {}'.format(ui_metadata_output))
+        logger.debug('Saving UI metadata file as {} ...'
+                     .format(ui_metadata_output))
 
         # Save [updated] KFP UI metadata file
         with open(ui_metadata_output, 'w') as f:
             json.dump(metadata, f)
-
-        # Expose metrics if the notebook | script produced any
-        # (https://www.kubeflow.org/docs/pipelines/sdk/pipelines-metrics/)
-        # Each NotebookOp must declare this as an output file or
-        # the KFP UI won't pick up the information.
-        kfp_metadata_filename = 'mlpipeline-metrics.json'
-
-        try:
-            # try to load the metadata file, if one was produced by the
-            # notebok or script
-            src = Path('.') / kfp_metadata_filename
-            logger.debug('Loading metadata from {}'.format(src))
-            with open(src, 'r') as f:
-                # Parse the file to make sure it's valid JSON.
-                # We do not validate the content though, just
-                # passing it through
-                try:
-                    metadata = json.load(f)
-                except ValueError as ve:
-                    # Something is wrong with the metadata file.
-                    logger.warning('Ignoring incompatible {} produced by {}: {} {}'.
-                                   format(str(src),
-                                          self.filepath,
-                                          ve,
-                                          str(ve)))
-                    # Re-raise to skip code below
-                    raise
-
-            metadata_output = output_path / kfp_metadata_filename
-
-            logger.debug('Saving metadata file in {}'.format(metadata_output))
-
-            # Save KFP metadata file
-            with open(metadata_output, 'w') as f:
-                json.dump(metadata, f)
-
-        except FileNotFoundError:
-            # The script | notebook didn't produce the file
-            # we are looking for.
-            logger.debug('{} produced no file named {}'
-                         .format(self.filepath,
-                                 src))
-        except ValueError:
-            # already handled
-            pass
-        except Exception as ex:
-            # Something went wrong during processing. However, this
-            # is not a reason to terminate node processing.
-            logger.warning('Error processing {} produced by {}: {} {}'.
-                           format(str(src),
-                                  self.filepath,
-                                  ex,
-                                  str(ex)))
 
         duration = time.time() - t0
         OpUtil.log_operation_info('metrics and metadata processed', duration)
@@ -603,7 +576,7 @@ def main():
     file_op.execute()
 
     # Process notebook | script metrics and KFP UI metadata
-    file_op.process_metrics()
+    file_op.process_metrics_and_metadata()
 
     duration = time.time() - t0
     OpUtil.log_operation_info("operation completed", duration)
