@@ -122,6 +122,28 @@ def test_fail_with_empty_string_as_notebook():
     assert "You need to provide a notebook." == str(error_info.value)
 
 
+def test_properly_set_notebook_name_when_in_subdirectory():
+    notebook_op = NotebookOp(name="test",
+                             notebook="foo/test_notebook.ipynb",
+                             cos_endpoint="http://testserver:32525",
+                             cos_bucket="test_bucket",
+                             cos_directory="test_directory",
+                             cos_dependencies_archive="test_archive.tgz",
+                             image="test/image:dev")
+    assert "test_notebook.ipynb" == notebook_op.notebook_name
+
+
+def test_properly_set_python_script_name_when_in_subdirectory():
+    notebook_op = NotebookOp(name="test",
+                             notebook="foo/test.py",
+                             cos_endpoint="http://testserver:32525",
+                             cos_bucket="test_bucket",
+                             cos_directory="test_directory",
+                             cos_dependencies_archive="test_archive.tgz",
+                             image="test/image:dev")
+    assert "test.py" == notebook_op.notebook_name
+
+
 def test_user_crio_volume_creation():
     notebook_op = NotebookOp(name="test",
                              notebook="test_notebook.ipynb",

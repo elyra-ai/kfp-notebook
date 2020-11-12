@@ -40,12 +40,7 @@ import bootstrapper
 # NOTE: Any changes to etc/tests/resources/test-notebookA.ipynb require an
 # update of etc/tests/resources/test-archive.tgz  using the command below:
 # tar -cvzf test-archive.tgz test-notebookA.ipynb
-#
-# There is also a need to update the following SHA256 hash used in
-# test_convert_notebook_to_html() below.
-#
 
-HTML_SHA256 = '4f717d3bbb41cb7b7d03814dee6639d3190e5b80f8a80b9af310b6109846d509'
 
 MINIO_HOST_PORT = os.getenv("MINIO_HOST_PORT", "127.0.0.1:9000")
 
@@ -532,7 +527,12 @@ def test_convert_notebook_to_html(tmpdir):
         bootstrapper.NotebookFileOp.convert_notebook_to_html(notebook_file, notebook_output_html_file)
 
         assert os.path.isfile(notebook_output_html_file)
-        assert hs.fileChecksum(notebook_output_html_file, "sha256") == HTML_SHA256
+        # Validate that an html file got generated from the notebook
+        with open(notebook_output_html_file, 'r') as html_file:
+            html_data = html_file.read()
+            assert html_data.startswith("<!DOCTYPE html>")
+            assert "&quot;TEST_ENV_VAR1&quot;" in html_data   # from os.getenv("TEST_ENV_VAR1")
+            assert html_data.endswith("</html>\n")
 
 
 def test_fail_convert_notebook_to_html(tmpdir):
