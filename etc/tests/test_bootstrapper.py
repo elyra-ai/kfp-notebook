@@ -24,8 +24,10 @@ import pytest
 import mock
 import sys
 
+from pathlib import Path
 from py_essentials import hashing as hs
 
+from tempfile import TemporaryFile
 sys.path.append('etc/docker-scripts/')
 import bootstrapper
 
@@ -179,7 +181,17 @@ def test_process_metrics_method_no_metadata_file(monkeypatch, s3_setup, tmpdir):
                      'outputs': 'test-file/test-file-copy.txt;test-file/test,file/test,file-copy.txt',
                      'user-volume-path': None}
 
-    metadata_file = '/tmp/mlpipeline-ui-metadata.json'
+    output_path = Path('/tmp')
+
+    # verify that output_path exists, is a directory
+    # and writable by creating a temporary file in that location
+    try:
+        with TemporaryFile(mode='w', dir=output_path) as t:
+            t.write('1')
+    except Exception:
+        pytest.skip('Not supported in this environment')
+
+    metadata_file = output_path / 'mlpipeline-ui-metadata.json'
 
     os.remove(metadata_file)
 
@@ -226,8 +238,18 @@ def test_process_metrics_method_valid_metadata_file(monkeypatch, s3_setup, tmpdi
                      'outputs': 'test-file/test-file-copy.txt;test-file/test,file/test,file-copy.txt',
                      'user-volume-path': None}
 
+    output_path = Path('/tmp')
+
+    # verify that output_path exists, is a directory
+    # and writable by creating a temporary file in that location
+    try:
+        with TemporaryFile(mode='w', dir=output_path) as t:
+            t.write('1')
+    except Exception:
+        pytest.skip('Not supported in this environment')
+
     input_metadata_file = 'mlpipeline-ui-metadata.json'
-    output_metadata_file = '/tmp/mlpipeline-ui-metadata.json'
+    output_metadata_file = output_path / input_metadata_file
 
     os.remove(output_metadata_file)
 
@@ -299,8 +321,18 @@ def test_process_metrics_method_invalid_metadata_file(monkeypatch, s3_setup, tmp
                      'outputs': 'test-file/test-file-copy.txt;test-file/test,file/test,file-copy.txt',
                      'user-volume-path': None}
 
+    output_path = Path('/tmp')
+
+    # verify that output_path exists, is a directory
+    # and writable by creating a temporary file in that location
+    try:
+        with TemporaryFile(mode='w', dir=output_path) as t:
+            t.write('1')
+    except Exception:
+        pytest.skip('Not supported in this environment')
+
     input_metadata_file = 'mlpipeline-ui-metadata.json'
-    output_metadata_file = '/tmp/mlpipeline-ui-metadata.json'
+    output_metadata_file = output_path / input_metadata_file
 
     os.remove(output_metadata_file)
 
