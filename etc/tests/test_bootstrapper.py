@@ -172,10 +172,54 @@ def is_writable_dir(path):
         return False
 
 
-def test_process_metrics_method_no_metadata_file(monkeypatch, s3_setup, tmpdir):
-    """Test for process_metrics
+def remove_file(filename, fail_ok=True):
+    """Removes filename. If fail_ok is False an assert is raised
+       if removal failed for any reason, e.g. filenotfound
+    """
+    try:
+        os.remove(filename)
+    except OSError as ose:
+        if fail_ok is False:
+            raise AssertionError('Cannot remove {}: {} {}'
+                                 .format(filename,
+                                         str(ose),
+                                         ose))
 
-    Verifies that process_metrics produces a valid KFP UI metadata file if
+
+def test_process_metrics_method_not_writable_dir(monkeypatch, s3_setup, tmpdir):
+    """Test for process_metrics_and_metadata
+
+    Validates that the method can handle output directory that is not writable
+    """
+
+    # remove "default" output file if it already exists
+    output_metadata_file = Path('/tmp') / 'mlpipeline-ui-metadata.json'
+    remove_file(output_metadata_file)
+
+    try:
+        os.environ['ELYRA_WRITABLE_CONTAINER_DIR'] = '/does/not/exist'
+        argument_dict = {'cos-endpoint': 'http://' + MINIO_HOST_PORT,
+                         'cos-bucket': 'test-bucket',
+                         'cos-directory': 'test-directory',
+                         'cos-dependencies-archive': 'test-archive.tgz',
+                         'filepath': 'etc/tests/resources/test-notebookA.ipynb',
+                         'inputs': 'test-file.txt;test,file.txt',
+                         'outputs': 'test-file/test-file-copy.txt;test-file/test,file/test,file-copy.txt',
+                         'user-volume-path': None}
+        main_method_setup_execution(monkeypatch, s3_setup, tmpdir, argument_dict)
+    except Exception as ex:
+        print('Writable dir test failed: {} {}'.format(str(ex), ex))
+        assert False
+    finally:
+        del os.environ['ELYRA_WRITABLE_CONTAINER_DIR']
+
+    assert output_metadata_file.exists() is False
+
+
+def test_process_metrics_method_no_metadata_file(monkeypatch, s3_setup, tmpdir):
+    """Test for process_metrics_and_metadata
+
+    Verifies that the method produces a valid KFP UI metadata file if
     the node's script | notebook did not generate this metadata file.
     """
     argument_dict = {'cos-endpoint': 'http://' + MINIO_HOST_PORT,
@@ -187,17 +231,24 @@ def test_process_metrics_method_no_metadata_file(monkeypatch, s3_setup, tmpdir):
                      'outputs': 'test-file/test-file-copy.txt;test-file/test,file/test,file-copy.txt',
                      'user-volume-path': None}
 
-    output_path = Path('/tmp')
-    if is_writable_dir(output_path) is False:
-        pytest.skip('Not supported in this environment')
-
+    output_path = Path(tmpdir)
+    # metadata file name and location
     metadata_file = output_path / 'mlpipeline-ui-metadata.json'
+    # remove file if it already exists
+    remove_file(metadata_file)
 
-    os.remove(metadata_file)
+    try:
+        # override the default output directory to make this test platform
+        # independent
+        monkeypatch.setenv('ELYRA_WRITABLE_CONTAINER_DIR', str(tmpdir))
+        main_method_setup_execution(monkeypatch, s3_setup, tmpdir, argument_dict)
+    except Exception:
+        raise
+    finally:
+        monkeypatch.delenv('ELYRA_WRITABLE_CONTAINER_DIR')
 
-    main_method_setup_execution(monkeypatch, s3_setup, tmpdir, argument_dict)
-    # process_metrics generates a file named
-    # /tmp/mlpipeline-ui-metadata.json should now be present
+    # process_metrics should have generated a file named mlpipeline-ui-metadata.json
+    # in tmpdir
 
     try:
         with open(metadata_file, 'r') as f:
@@ -223,11 +274,10 @@ def test_process_metrics_method_no_metadata_file(monkeypatch, s3_setup, tmpdir):
 
 
 def test_process_metrics_method_valid_metadata_file(monkeypatch, s3_setup, tmpdir):
-    """Test for process_metrics
+    """Test for process_metrics_and_metadata
 
-    Verifies that process_metrics produces a valid KFP UI metadata file if
-    the node's script | notebook did already generate this metadata file. The
-    content of that file should be preserved.
+    Verifies that the method produces a valid KFP UI metadata file if
+    the node's script | notebook generated this metadata file.
     """
     argument_dict = {'cos-endpoint': 'http://' + MINIO_HOST_PORT,
                      'cos-bucket': 'test-bucket',
@@ -238,14 +288,12 @@ def test_process_metrics_method_valid_metadata_file(monkeypatch, s3_setup, tmpdi
                      'outputs': 'test-file/test-file-copy.txt;test-file/test,file/test,file-copy.txt',
                      'user-volume-path': None}
 
-    output_path = Path('/tmp')
-    if is_writable_dir(output_path) is False:
-        pytest.skip('Not supported in this environment')
-
+    output_path = Path(tmpdir)
+    # metadata file name and location
     input_metadata_file = 'mlpipeline-ui-metadata.json'
     output_metadata_file = output_path / input_metadata_file
-
-    os.remove(output_metadata_file)
+    # remove output_metadata_file if it already exists
+    remove_file(output_metadata_file)
 
     #
     # Simulate some custom metadata that the script | notebook produced
@@ -260,12 +308,18 @@ def test_process_metrics_method_valid_metadata_file(monkeypatch, s3_setup, tmpdi
         ]
     }
 
-    with tmpdir.as_cwd():
-        with open(input_metadata_file, 'w') as f:
-            json.dump(custom_metadata, f)
+    try:
+        with tmpdir.as_cwd():
+            with open(input_metadata_file, 'w') as f:
+                json.dump(custom_metadata, f)
+        # override the default output directory to make this test platform
+        # independent
+        monkeypatch.setenv('ELYRA_WRITABLE_CONTAINER_DIR', str(tmpdir))
+        main_method_setup_execution(monkeypatch, s3_setup, tmpdir, argument_dict)
+    finally:
+        monkeypatch.delenv('ELYRA_WRITABLE_CONTAINER_DIR')
 
-    main_method_setup_execution(monkeypatch, s3_setup, tmpdir, argument_dict)
-    # /tmp/mlpipeline-ui-metadata.json should now have been updated
+    # output_metadata_file should now exist
 
     try:
         with open(output_metadata_file, 'r') as f:
@@ -300,11 +354,10 @@ def test_process_metrics_method_valid_metadata_file(monkeypatch, s3_setup, tmpdi
 
 
 def test_process_metrics_method_invalid_metadata_file(monkeypatch, s3_setup, tmpdir):
-    """Test for process_metrics
+    """Test for process_metrics_and_metadata
 
-    Verifies that process_metrics produces a valid KFP UI metadata file if
-    the node's script | notebook generate an invalid metadata file, which
-    cannot be merged and is therefore overwritten.
+       Verifies that the method produces a valid KFP UI metadata file if
+       the node's script | notebook generated an invalid metadata file.
     """
     argument_dict = {'cos-endpoint': 'http://' + MINIO_HOST_PORT,
                      'cos-bucket': 'test-bucket',
@@ -315,25 +368,29 @@ def test_process_metrics_method_invalid_metadata_file(monkeypatch, s3_setup, tmp
                      'outputs': 'test-file/test-file-copy.txt;test-file/test,file/test,file-copy.txt',
                      'user-volume-path': None}
 
-    output_path = Path('/tmp')
-    if is_writable_dir(output_path) is False:
-        pytest.skip('Not supported in this environment')
-
+    output_path = Path(tmpdir)
+    # metadata file name and location
     input_metadata_file = 'mlpipeline-ui-metadata.json'
     output_metadata_file = output_path / input_metadata_file
-
-    os.remove(output_metadata_file)
+    # remove output_metadata_file if it already exists
+    remove_file(output_metadata_file)
 
     #
     # Populate the metadata file with some custom data that's not JSON
     #
 
-    with tmpdir.as_cwd():
-        with open(input_metadata_file, 'w') as f:
-            f.write('I am not a valid JSON data structure')
-            f.write('1,2,3,4,5,6,7')
+    try:
+        with tmpdir.as_cwd():
+            with open(input_metadata_file, 'w') as f:
+                f.write('I am not a valid JSON data structure')
+                f.write('1,2,3,4,5,6,7')
 
-    main_method_setup_execution(monkeypatch, s3_setup, tmpdir, argument_dict)
+        # override the default output directory to make this test platform
+        # independent
+        monkeypatch.setenv('ELYRA_WRITABLE_CONTAINER_DIR', str(tmpdir))
+        main_method_setup_execution(monkeypatch, s3_setup, tmpdir, argument_dict)
+    finally:
+        monkeypatch.delenv('ELYRA_WRITABLE_CONTAINER_DIR')
 
     # process_metrics replaces the existing metadata file
     # because its content cannot be merged
