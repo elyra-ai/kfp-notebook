@@ -124,13 +124,21 @@ class FileOpBase(ABC):
         OpUtil.log_operation_info('outputs processed', duration)
 
     def process_metrics_and_metadata(self) -> None:
+        """Process metrics and metadata
+
+        This method exposes metrics/metadata that the processed
+        notebook | script produces in the KFP UI.
+
+        This method should not be overridden by subclasses.
+        """
 
         OpUtil.log_operation_info('processing metrics and metadata')
         t0 = time.time()
 
         # Location where the KFP specific output files will be stored
-        # in the environment where the bootsrapper is running
-        output_path = Path('/tmp')
+        # in the environment where the bootsrapper is running.
+        # Defaults to '/tmp' if not specified.
+        output_path = Path(os.getenv('ELYRA_WRITABLE_CONTAINER_DIR', '/tmp'))
 
         # verify that output_path exists, is a directory
         # and writable by creating a temporary file in that location
