@@ -197,7 +197,7 @@ def test_process_metrics_method_not_writable_dir(monkeypatch, s3_setup, tmpdir):
     remove_file(output_metadata_file)
 
     try:
-        os.environ['ELYRA_WRITABLE_CONTAINER_DIR'] = '/does/not/exist'
+        monkeypatch.setenv('ELYRA_WRITABLE_CONTAINER_DIR', '/good/time/to/fail')
         argument_dict = {'cos-endpoint': 'http://' + MINIO_HOST_PORT,
                          'cos-bucket': 'test-bucket',
                          'cos-directory': 'test-directory',
@@ -210,8 +210,6 @@ def test_process_metrics_method_not_writable_dir(monkeypatch, s3_setup, tmpdir):
     except Exception as ex:
         print('Writable dir test failed: {} {}'.format(str(ex), ex))
         assert False
-    finally:
-        del os.environ['ELYRA_WRITABLE_CONTAINER_DIR']
 
     assert output_metadata_file.exists() is False
 
@@ -237,15 +235,10 @@ def test_process_metrics_method_no_metadata_file(monkeypatch, s3_setup, tmpdir):
     # remove file if it already exists
     remove_file(metadata_file)
 
-    try:
-        # override the default output directory to make this test platform
-        # independent
-        monkeypatch.setenv('ELYRA_WRITABLE_CONTAINER_DIR', str(tmpdir))
-        main_method_setup_execution(monkeypatch, s3_setup, tmpdir, argument_dict)
-    except Exception:
-        raise
-    finally:
-        monkeypatch.delenv('ELYRA_WRITABLE_CONTAINER_DIR')
+    # override the default output directory to make this test platform
+    # independent
+    monkeypatch.setenv('ELYRA_WRITABLE_CONTAINER_DIR', str(tmpdir))
+    main_method_setup_execution(monkeypatch, s3_setup, tmpdir, argument_dict)
 
     # process_metrics should have generated a file named mlpipeline-ui-metadata.json
     # in tmpdir
@@ -308,16 +301,13 @@ def test_process_metrics_method_valid_metadata_file(monkeypatch, s3_setup, tmpdi
         ]
     }
 
-    try:
-        with tmpdir.as_cwd():
-            with open(input_metadata_file, 'w') as f:
-                json.dump(custom_metadata, f)
-        # override the default output directory to make this test platform
-        # independent
-        monkeypatch.setenv('ELYRA_WRITABLE_CONTAINER_DIR', str(tmpdir))
-        main_method_setup_execution(monkeypatch, s3_setup, tmpdir, argument_dict)
-    finally:
-        monkeypatch.delenv('ELYRA_WRITABLE_CONTAINER_DIR')
+    with tmpdir.as_cwd():
+        with open(input_metadata_file, 'w') as f:
+            json.dump(custom_metadata, f)
+    # override the default output directory to make this test platform
+    # independent
+    monkeypatch.setenv('ELYRA_WRITABLE_CONTAINER_DIR', str(tmpdir))
+    main_method_setup_execution(monkeypatch, s3_setup, tmpdir, argument_dict)
 
     # output_metadata_file should now exist
 
@@ -379,18 +369,15 @@ def test_process_metrics_method_invalid_metadata_file(monkeypatch, s3_setup, tmp
     # Populate the metadata file with some custom data that's not JSON
     #
 
-    try:
-        with tmpdir.as_cwd():
-            with open(input_metadata_file, 'w') as f:
-                f.write('I am not a valid JSON data structure')
-                f.write('1,2,3,4,5,6,7')
+    with tmpdir.as_cwd():
+        with open(input_metadata_file, 'w') as f:
+            f.write('I am not a valid JSON data structure')
+            f.write('1,2,3,4,5,6,7')
 
-        # override the default output directory to make this test platform
-        # independent
-        monkeypatch.setenv('ELYRA_WRITABLE_CONTAINER_DIR', str(tmpdir))
-        main_method_setup_execution(monkeypatch, s3_setup, tmpdir, argument_dict)
-    finally:
-        monkeypatch.delenv('ELYRA_WRITABLE_CONTAINER_DIR')
+    # override the default output directory to make this test platform
+    # independent
+    monkeypatch.setenv('ELYRA_WRITABLE_CONTAINER_DIR', str(tmpdir))
+    main_method_setup_execution(monkeypatch, s3_setup, tmpdir, argument_dict)
 
     # process_metrics replaces the existing metadata file
     # because its content cannot be merged
