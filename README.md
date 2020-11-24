@@ -1,6 +1,6 @@
 <!--
 {% comment %}
-Copyright 2018-2020 IBM Corporation
+Copyright 2018-2020 Elyra Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -43,7 +43,7 @@ cos_endpoint = 'http://s3.us-south.cloud-object-storage.appdomain.cloud'
 cos_bucket = 'test-bucket'
 cos_username = 'test'
 cos_password = 'test123'
-cos_directory = 'test-directory' 
+cos_directory = 'test-directory'
 cos_dependencies_archive = 'test-archive.tar.gz'
 
 # Inputs and Outputs
@@ -54,7 +54,7 @@ outputs = []
 image = 'tensorflow/tensorflow:latest'
 
 def run_notebook_op(op_name, notebook_path):
-    
+
     notebook_op = NotebookOp(name=op_name,
                              notebook=notebook_path,
                              cos_endpoint=cos_endpoint,
