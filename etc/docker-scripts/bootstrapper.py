@@ -192,12 +192,25 @@ class NotebookFileOp(FileOpBase):
 
         try:
             OpUtil.log_operation_info(f"executing notebook using 'papermill {notebook} {notebook_output}'")
+            using_gateway = False
+            if os.getenv("ELYRA_GATEWAY_ENABLED", "false").lower() == "true":
+                try:
+                    import elyra.pipeline.elyra_engine.ElyraEngine  # noqa
+                    using_gateway = True
+                except (ImportError, ModuleNotFoundError):
+                    logger.warning("The papermill engine 'elyra.pipeline.elyra_engine.ElyraEngine' is not available.  "
+                                   "Enterprise Gateway cannot be accessed!")
             t0 = time.time()
             # Include kernel selection in execution time
-            kernel_name = NotebookFileOp.find_best_kernel(notebook)
+            kernel_name = NotebookFileOp.find_best_kernel(notebook, using_gateway)
+
+            additional_kwargs = dict()
+            if using_gateway:
+                additional_kwargs['engine_name'] = "ElyraEngine"
+                additional_kwargs['kernel_manager_class'] = 'elyra.pipeline.http_kernel_manager.HTTPKernelManager'
 
             import papermill
-            papermill.execute_notebook(notebook, notebook_output, kernel_name=kernel_name)
+            papermill.execute_notebook(notebook, notebook_output, kernel_name=kernel_name, **additional_kwargs)
             duration = time.time() - t0
             OpUtil.log_operation_info("notebook execution completed", duration)
 
@@ -239,10 +252,11 @@ class NotebookFileOp(FileOpBase):
         return html_file
 
     @staticmethod
-    def find_best_kernel(notebook_file: str) -> str:
+    def find_best_kernel(notebook_file: str, using_gateway: bool) -> str:
         """Determines the best kernel to use via the following algorithm:
 
            1. Loads notebook and gets kernel_name and kernel_language from NB metadata.
+              If using a gateway, return the notebook's kernel name.
            2. Gets the list of configured kernels using KernelSpecManager.
            3. If notebook kernel_name is in list, use that, else
            4. If not found, load each configured kernel.json file and find a language match.
@@ -258,6 +272,10 @@ class NotebookFileOp(FileOpBase):
         nb_kspec = nb.metadata.kernelspec
         nb_kernel_name = nb_kspec.get('name')
         nb_kernel_lang = nb_kspec.get('language')
+
+        # if a gateway is enabled, trust the kernel name for now - TODO (look into make a REST call another time)
+        if using_gateway:
+            return nb_kernel_name
 
         kernel_specs = KernelSpecManager().find_kernel_specs()
 

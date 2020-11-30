@@ -409,7 +409,7 @@ def test_find_best_kernel_nb(tmpdir):
     nbformat.write(nb, nb_file)
 
     with tmpdir.as_cwd():
-        kernel_name = bootstrapper.NotebookFileOp.find_best_kernel(nb_file)
+        kernel_name = bootstrapper.NotebookFileOp.find_best_kernel(nb_file, False)
         assert kernel_name == nb.metadata.kernelspec['name']
 
 
@@ -425,7 +425,7 @@ def test_find_best_kernel_lang(tmpdir, caplog):
     nbformat.write(nb, nb_file)
 
     with tmpdir.as_cwd():
-        kernel_name = bootstrapper.NotebookFileOp.find_best_kernel(nb_file)
+        kernel_name = bootstrapper.NotebookFileOp.find_best_kernel(nb_file, False)
         assert kernel_name == 'python3'
         assert len(caplog.records) == 1
         assert caplog.records[0].message.startswith("Matched kernel by language (PYTHON)")
@@ -442,7 +442,7 @@ def test_find_best_kernel_nomatch(tmpdir, caplog):
     nbformat.write(nb, nb_file)
 
     with tmpdir.as_cwd():
-        kernel_name = bootstrapper.NotebookFileOp.find_best_kernel(nb_file)
+        kernel_name = bootstrapper.NotebookFileOp.find_best_kernel(nb_file, False)
         assert kernel_name == 'test-kernel'
         assert len(caplog.records) == 1
         assert caplog.records[0].message.startswith("Reverting back to missing notebook kernel 'test-kernel'")
