@@ -195,7 +195,7 @@ class NotebookFileOp(FileOpBase):
             using_gateway = False
             if os.getenv("ELYRA_GATEWAY_ENABLED", "false").lower() == "true":
                 try:
-                    import elyra.pipeline.elyra_engine.ElyraEngine  # noqa
+                    from elyra.pipeline.elyra_engine import ElyraEngine  # noqa
                     using_gateway = True
                 except (ImportError, ModuleNotFoundError):
                     logger.warning("The papermill engine 'elyra.pipeline.elyra_engine.ElyraEngine' is not available.  "
@@ -452,8 +452,8 @@ def main():
 
     if logger.isEnabledFor(logging.DEBUG):
         logger.debug("Dumping environment...")
-        for k,v in os.environ.items():
-            logger.debug(f"{k}={v}")
+        for k in sorted(os.environ.keys()):
+            logger.debug(f"{k}={os.environ[k]}")
 
     # Create the appropriate instance, process dependencies and execute the operation
     file_op = FileOpBase.get_instance(**input_params)
