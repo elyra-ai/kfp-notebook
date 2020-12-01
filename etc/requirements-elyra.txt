@@ -1,4 +1,7 @@
 # This is a comprehensive list of python dependencies that Elyra requires to execute Jupyter notebooks.
+# Any entries that are installed from github, should take the form, 'package_name @ git+https://github.com/org/repo@branch'
+#elyra-server==2.0.0
+elyra @ git+https://github.com/kevin-bates/elyra@support-eg-in-runtimes
 ipykernel==5.3.0
 ipython==7.15.0
 ipython-genutils==0.2.0

@@ -357,7 +357,10 @@ class OpUtil(object):
         to_install_list = []
 
         for package, ver in elyra_packages.items():
-            if package in current_packages:
+            if "git+" in ver:  # Check for git-based package
+                logger.info(f"Package {package} will be installed from {ver}...")
+                to_install_list.append(ver)
+            elif package in current_packages:
                 if "git+" in current_packages[package]:
                     logger.warning(f"WARNING: Source package {package} found already installed from "
                                    f"{current_packages[package]}. This may conflict with the required "
@@ -393,14 +396,15 @@ class OpUtil(object):
     def package_list_to_dict(cls, filename: str) -> dict:
         package_dict = {}
         with open(filename) as fh:
-            for line in fh:
-                if line[0] != '#':
+            for full_line in fh:
+                line = full_line.strip('\n').strip()
+                if line and line[0] != '#':  # Skip blank and commented lines
                     if " @ " in line:
-                        package_name, package_version = line.strip('\n').split(sep=" @ ")
+                        package_name, package_version = line.split(sep=" @ ")
                     elif "===" in line:
-                        package_name, package_version = line.strip('\n').split(sep="===")
+                        package_name, package_version = line.split(sep="===")
                     else:
-                        package_name, package_version = line.strip('\n').split(sep="==")
+                        package_name, package_version = line.split(sep="==")
 
                     package_dict[package_name] = package_version
 
