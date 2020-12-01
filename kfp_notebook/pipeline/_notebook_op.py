@@ -167,15 +167,22 @@ class NotebookOp(ContainerOp):
                                  )
 
             if self.pipeline_inputs:
-                inputs_str = self._artifact_list_to_str(self.pipeline_inputs)
+                inputs_str = NotebookOp._artifact_list_to_str(self.pipeline_inputs)
                 argument_list.append('--inputs "{}" '.format(inputs_str))
 
             if self.pipeline_outputs:
-                outputs_str = self._artifact_list_to_str(self.pipeline_outputs)
+                outputs_str = NotebookOp._artifact_list_to_str(self.pipeline_outputs)
                 argument_list.append('--outputs "{}" '.format(outputs_str))
 
             if self.emptydir_volume_size:
                 argument_list.append('--user-volume-path "{}" '.format(self.python_user_lib_path))
+
+            if self.pipeline_envs:  # Collect env names to pass to kernel
+                names = []
+                for name in self.pipeline_envs.keys():
+                    names.append(name)
+                env_names = NotebookOp._artifact_list_to_str(names)  # convert to string with separator
+                argument_list.append('--env_names "{}" '.format(env_names))
 
             kwargs['command'] = ['sh', '-c']
             kwargs['arguments'] = "".join(argument_list)
@@ -203,7 +210,8 @@ class NotebookOp(ContainerOp):
             self.container.add_env_variable(V1EnvVar(name='PYTHONPATH',
                                                      value=self.python_user_lib_path))
 
-    def _artifact_list_to_str(self, pipeline_array):
+    @staticmethod
+    def _artifact_list_to_str(pipeline_array: list) -> str:
         trimmed_artifact_list = []
         for artifact_name in pipeline_array:
             if INOUT_SEPARATOR in artifact_name:  # if INOUT_SEPARATOR is in name, throw since this is our separator

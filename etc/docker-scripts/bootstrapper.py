@@ -208,6 +208,7 @@ class NotebookFileOp(FileOpBase):
             if using_gateway:
                 additional_kwargs['engine_name'] = "ElyraEngine"
                 additional_kwargs['kernel_manager_class'] = 'elyra.pipeline.http_kernel_manager.HTTPKernelManager'
+                additional_kwargs['kernel_env'] = self.gather_kernel_env()
 
             import papermill
             papermill.execute_notebook(notebook, notebook_output, kernel_name=kernel_name, **additional_kwargs)
@@ -298,6 +299,21 @@ class NotebookFileOp(FileOpBase):
         logger.warning(f"Reverting back to missing notebook kernel '{nb_kernel_name}' since no "
                        f"language match ({nb_kernel_lang}) was found in current kernel specifications.")
         return nb_kernel_name
+
+    def gather_kernel_env(self) -> dict:
+        """Collect any ELYRA_ and KERNEL_ envs for use by HTTPKernelManager"""
+        kernel_env = {}
+
+        env_names = self.input_params.get('env_names')
+        if env_names:
+            env_name_list = env_names.split(INOUT_SEPARATOR)
+            for name in env_name_list:
+                if not name or name in ['AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY']:  # skip the COS creds
+                    continue
+                logger.debug(f"Passing '{name}' to kernel env...")
+                kernel_env[name] = os.environ[name]
+
+        return kernel_env
 
 
 class PythonFileOp(FileOpBase):
@@ -410,6 +426,8 @@ class OpUtil(object):
         parser.add_argument('-i', '--inputs', dest="inputs", help='Files to pull in from parent node', required=False)
         parser.add_argument('-p', '--user-volume-path', dest="user-volume-path",
                             help='Directory in Volume to install python libraries into', required=False)
+        parser.add_argument('-n', '--env_names', dest="env_names",
+                            help='Names of environment variables to pass to kernel', required=False)
         parsed_args = vars(parser.parse_args(args))
 
         # cos-directory is the pipeline name, set as global
