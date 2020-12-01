@@ -450,6 +450,11 @@ def main():
     t0 = time.time()
     OpUtil.package_install(user_volume_path=input_params.get('user-volume-path'))
 
+    if logger.isEnabledFor(logging.DEBUG):
+        logger.debug("Dumping environment...")
+        for k,v in os.environ.items():
+            logger.debug(f"{k}={v}")
+
     # Create the appropriate instance, process dependencies and execute the operation
     file_op = FileOpBase.get_instance(**input_params)
 
