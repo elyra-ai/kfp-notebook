@@ -51,6 +51,9 @@ class NotebookOp(ContainerOp):
                  requirements_url: str = None,
                  bootstrap_script_url: str = None,
                  emptydir_volume_size: str = None,
+                 cpu_request: str = None,
+                 mem_request: str = None,
+                 gpu_request: str = None,
                  **kwargs):
         """Create a new instance of ContainerOp.
         Args:
@@ -65,6 +68,9 @@ class NotebookOp(ContainerOp):
           requirements_url: URL to a python requirements.txt file to be installed prior to running the notebook
           bootstrap_script_url: URL to a custom python bootstrap script to run
           emptydir_volume_size: Size(GB) of the volume to create for the workspace when using CRIO container runtime
+          cpu_request: number of CPUs requested for the operation
+          mem_request: memory requested for the operation (in Gi)
+          gpu_request: number of GPUs requested for the operation
           kwargs: additional key value pairs to pass e.g. name, image, sidecars & is_exit_handler.
                   See Kubeflow pipelines ContainerOp definition for more parameters or how to use
                   https://kubeflow-pipelines.readthedocs.io/en/latest/source/kfp.dsl.html#kfp.dsl.ContainerOp
@@ -84,6 +90,9 @@ class NotebookOp(ContainerOp):
         self.pipeline_outputs = pipeline_outputs
         self.pipeline_inputs = pipeline_inputs
         self.pipeline_envs = pipeline_envs
+        self.cpu_request = cpu_request
+        self.mem_request = mem_request
+        self.gpu_request = gpu_request
 
         argument_list = []
 
@@ -202,6 +211,15 @@ class NotebookOp(ContainerOp):
             # Append to PYTHONPATH location of elyra dependencies in installed in Volume
             self.container.add_env_variable(V1EnvVar(name='PYTHONPATH',
                                                      value=self.python_user_lib_path))
+
+        if self.cpu_request:
+            self.container.set_cpu_request(cpu=str(cpu_request))
+
+        if self.mem_request:
+            self.container.set_memory_request(memory=str(mem_request) + "G")
+
+        if self.gpu_request:
+            self.container.set_gpu_limit(gpu=str(gpu_request))
 
     def _artifact_list_to_str(self, pipeline_array):
         trimmed_artifact_list = []
