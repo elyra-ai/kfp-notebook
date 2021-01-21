@@ -70,7 +70,7 @@ class NotebookOp(ContainerOp):
           emptydir_volume_size: Size(GB) of the volume to create for the workspace when using CRIO container runtime
           cpu_request: number of CPUs requested for the operation
           mem_request: memory requested for the operation (in Gi)
-          gpu_request: number of GPUs requested for the operation
+          gpu_limit: maximum number of GPUs allowed for the operation
           kwargs: additional key value pairs to pass e.g. name, image, sidecars & is_exit_handler.
                   See Kubeflow pipelines ContainerOp definition for more parameters or how to use
                   https://kubeflow-pipelines.readthedocs.io/en/latest/source/kfp.dsl.html#kfp.dsl.ContainerOp
