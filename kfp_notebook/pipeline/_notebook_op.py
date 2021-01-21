@@ -53,7 +53,7 @@ class NotebookOp(ContainerOp):
                  emptydir_volume_size: str = None,
                  cpu_request: str = None,
                  mem_request: str = None,
-                 gpu_request: str = None,
+                 gpu_limit: str = None,
                  **kwargs):
         """Create a new instance of ContainerOp.
         Args:
@@ -92,7 +92,7 @@ class NotebookOp(ContainerOp):
         self.pipeline_envs = pipeline_envs
         self.cpu_request = cpu_request
         self.mem_request = mem_request
-        self.gpu_request = gpu_request
+        self.gpu_limit = gpu_limit
 
         argument_list = []
 
@@ -218,8 +218,9 @@ class NotebookOp(ContainerOp):
         if self.mem_request:
             self.container.set_memory_request(memory=str(mem_request) + "G")
 
-        if self.gpu_request:
-            self.container.set_gpu_limit(gpu=str(gpu_request))
+        if self.gpu_limit:
+            gpu_vendor = self.pipeline_envs.get('GPU_VENDOR', 'nvidia')
+            self.container.set_gpu_limit(gpu=str(gpu_limit), vendor=gpu_vendor)
 
     def _artifact_list_to_str(self, pipeline_array):
         trimmed_artifact_list = []
