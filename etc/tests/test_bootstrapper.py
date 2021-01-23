@@ -523,14 +523,14 @@ def test_package_installation_with_target_path(monkeypatch, virtualenv):
                   }
     to_install_dict = {'bleach': '3.1.5',
                        'ansiwrap': '0.7.0',
-                       'packaging': '20.7',
+                       'packaging': '20.8',
                        'text-extensions-for-pandas':
                        "git+https://github.com/akchinSTC/"
                        "text-extensions-for-pandas@50d5a1688fb723b5dd8139761830d3419042fee5"
                        }
     correct_dict = {'ipykernel': '5.3.0',
                     'ansiwrap': '0.8.4',
-                    'packaging': '20.7',
+                    'packaging': '20.8',
                     'text-extensions-for-pandas':
                     "git+https://github.com/akchinSTC/text-extensions-for-pandas@50d5a1688fb723b5dd8139761830d3419042fee5"  # noqa: E501
                     }
@@ -542,7 +542,7 @@ def test_package_installation_with_target_path(monkeypatch, virtualenv):
 
     virtualenv.run("python3 -m pip install --target='/tmp/lib/' bleach==3.1.5")
     virtualenv.run("python3 -m pip install --target='/tmp/lib/' ansiwrap==0.7.0")
-    virtualenv.run("python3 -m pip install --target='/tmp/lib/' packaging==20.7")
+    virtualenv.run("python3 -m pip install --target='/tmp/lib/' packaging==20.8")
     virtualenv.run("python3 -m pip install --target='/tmp/lib/' git+https://github.com/akchinSTC/"
                    "text-extensions-for-pandas@50d5a1688fb723b5dd8139761830d3419042fee5")
 
