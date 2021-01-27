@@ -44,3 +44,6 @@ twine upload --sign dist/*
 bump2version minor
 git commit -a -m"Prepare for next development iteration"
 ```
+
+* Publishing conda-forge package
+    - https://github.com/conda-forge/kfp-notebook-feedstock
