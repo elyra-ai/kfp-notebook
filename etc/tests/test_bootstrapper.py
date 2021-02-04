@@ -471,20 +471,17 @@ def test_package_installation(monkeypatch, virtualenv):
     elyra_dict = {'ipykernel': '5.3.0',
                   'ansiwrap': '0.8.4',
                   'packaging': '20.0',
-                  'text-extensions-for-pandas': '2.0.0'
+                  'text-extensions-for-pandas': '0.0.1-prealpha'
                   }
     to_install_dict = {'bleach': '3.1.5',
                        'ansiwrap': '0.7.0',
                        'packaging': '20.4',
-                       'text-extensions-for-pandas':
-                       "git+https://github.com/akchinSTC/"
-                       "text-extensions-for-pandas@50d5a1688fb723b5dd8139761830d3419042fee5"
+                       'text-extensions-for-pandas': "0.0.1-prealpha"
                        }
     correct_dict = {'ipykernel': '5.3.0',
                     'ansiwrap': '0.8.4',
                     'packaging': '20.4',
-                    'text-extensions-for-pandas':
-                    "git+https://github.com/akchinSTC/text-extensions-for-pandas@50d5a1688fb723b5dd8139761830d3419042fee5"  # noqa: E501
+                    'text-extensions-for-pandas': "0.0.1-prealpha"
                     }
 
     mocked_func = mock.Mock(return_value="default", side_effect=[elyra_dict, to_install_dict])
@@ -501,6 +498,7 @@ def test_package_installation(monkeypatch, virtualenv):
     bootstrapper.OpUtil.package_install(user_volume_path=None)
     virtual_env_dict = {}
     output = virtualenv.run("python3 -m pip freeze", capture=True)
+    print("This is the [pip freeze] output :\n" + output)
     for line in output.strip().split('\n'):
         if " @ " in line:
             package_name, package_version = line.strip('\n').split(sep=" @ ")
@@ -519,20 +517,17 @@ def test_package_installation_with_target_path(monkeypatch, virtualenv):
     elyra_dict = {'ipykernel': '5.3.0',
                   'ansiwrap': '0.8.4',
                   'packaging': '20.0',
-                  'text-extensions-for-pandas': '2.0.0'
+                  'text-extensions-for-pandas': '0.0.1-prealpha'
                   }
     to_install_dict = {'bleach': '3.1.5',
                        'ansiwrap': '0.7.0',
                        'packaging': '20.9',
-                       'text-extensions-for-pandas':
-                       "git+https://github.com/akchinSTC/"
-                       "text-extensions-for-pandas@50d5a1688fb723b5dd8139761830d3419042fee5"
+                       'text-extensions-for-pandas': "0.0.1-prealpha"
                        }
     correct_dict = {'ipykernel': '5.3.0',
                     'ansiwrap': '0.8.4',
                     'packaging': '20.9',
-                    'text-extensions-for-pandas':
-                    "git+https://github.com/akchinSTC/text-extensions-for-pandas@50d5a1688fb723b5dd8139761830d3419042fee5"  # noqa: E501
+                    'text-extensions-for-pandas': "0.0.1-prealpha"
                     }
 
     mocked_func = mock.Mock(return_value="default", side_effect=[elyra_dict, to_install_dict])
@@ -540,6 +535,7 @@ def test_package_installation_with_target_path(monkeypatch, virtualenv):
     monkeypatch.setattr(bootstrapper.OpUtil, "package_list_to_dict", mocked_func)
     monkeypatch.setattr(sys, "executable", virtualenv.python)
 
+    virtualenv.run("python3 -m pip install --upgrade pip")
     virtualenv.run("python3 -m pip install --target='/tmp/lib/' bleach==3.1.5")
     virtualenv.run("python3 -m pip install --target='/tmp/lib/' ansiwrap==0.7.0")
     virtualenv.run("python3 -m pip install --target='/tmp/lib/' packaging==20.9")
@@ -549,7 +545,7 @@ def test_package_installation_with_target_path(monkeypatch, virtualenv):
     bootstrapper.OpUtil.package_install(user_volume_path='/tmp/lib/')
     virtual_env_dict = {}
     output = virtualenv.run("python3 -m pip freeze --path=/tmp/lib/", capture=True)
-    print("This is the output :" + output)
+    print("This is the [pip freeze] output :\n" + output)
     for line in output.strip().split('\n'):
         if " @ " in line:
             package_name, package_version = line.strip('\n').split(sep=" @ ")
