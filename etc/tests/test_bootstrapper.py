@@ -15,6 +15,7 @@
 #
 
 import json
+import hashlib
 import logging
 import minio
 import nbformat
@@ -25,7 +26,6 @@ import mock
 import sys
 
 from pathlib import Path
-from py_essentials import hashing as hs
 
 from tempfile import TemporaryFile
 sys.path.append('etc/docker-scripts/')
@@ -603,7 +603,7 @@ def test_get_file_object_store(monkeypatch, s3_setup, tmpdir):
 
         op.get_file_from_object_storage(file_to_get)
         assert os.path.isfile(file_to_get)
-        assert hs.fileChecksum(file_to_get, "sha256") == hs.fileChecksum(current_directory + file_to_get, "sha256")
+        assert _fileChecksum(file_to_get) == _fileChecksum(current_directory + file_to_get)
 
 
 def test_fail_get_file_object_store(monkeypatch, s3_setup, tmpdir):
@@ -626,7 +626,7 @@ def test_put_file_object_store(monkeypatch, s3_setup, tmpdir):
     with tmpdir.as_cwd():
         s3_setup.fget_object(bucket_name, file_to_put, file_to_put)
         assert os.path.isfile(file_to_put)
-        assert hs.fileChecksum(file_to_put, "sha256") == hs.fileChecksum(current_directory + file_to_put, "sha256")
+        assert _fileChecksum(file_to_put) == _fileChecksum(current_directory + file_to_put)
 
 
 def test_fail_invalid_filename_put_file_object_store(monkeypatch, s3_setup):
@@ -771,3 +771,15 @@ def test_fail_requirements_file_bad_delimiter():
     bad_requirements_file = "etc/tests/resources/test-bad-requirements-elyra.txt"
     with pytest.raises(ValueError):
         bootstrapper.OpUtil.package_list_to_dict(bad_requirements_file)
+
+
+def _fileChecksum(filename):
+    hasher = hashlib.sha256()
+
+    with open(filename, 'rb') as afile:
+        buf = afile.read(65536)
+        while len(buf) > 0:
+            hasher.update(buf)
+            buf = afile.read(65536)
+    checksum = hasher.hexdigest()
+    return checksum
