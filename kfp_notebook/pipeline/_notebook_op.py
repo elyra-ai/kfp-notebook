@@ -33,8 +33,20 @@ and have python3
 # same-named variable in bootstrapper.py must be updated!
 INOUT_SEPARATOR = ';'
 
-KFP_NOTEBOOK_ORG = os.getenv("KFP_NOTEBOOK_ORG", "elyra-ai")
-KFP_NOTEBOOK_BRANCH = os.getenv("KFP_NOTEBOOK_BRANCH", "master" if 'dev' in __version__ else "v" + __version__)
+ELYRA_GITHUB_ORG = os.getenv("ELYRA_GITHUB_ORG", "elyra-ai")
+ELYRA_GITHUB_BRANCH = os.getenv("ELYRA_GITHUB_BRANCH", "master" if 'dev' in __version__ else "v" + __version__)
+ELYRA_PIP_CONFIG_URL = os.getenv('ELYRA_PIP_CONFIG_URL', 'https://raw.githubusercontent.com/{org}/kfp-notebook/'
+                                                         '{branch}/etc/pip.conf'.
+                                                         format(org=ELYRA_GITHUB_ORG, branch=ELYRA_GITHUB_BRANCH))
+ELYRA_BOOTSTRAP_SCRIPT_URL = os.getenv('ELYRA_BOOTSTRAP_SCRIPT_URL', 'https://raw.githubusercontent.com/{org}/'
+                                                                     'kfp-notebook/{branch}/etc/docker-scripts/'
+                                                                     'bootstrapper.py'.
+                                                                     format(org=ELYRA_GITHUB_ORG,
+                                                                            branch=ELYRA_GITHUB_BRANCH))
+ELYRA_REQUIREMENTS_URL = os.getenv('ELYRA_REQUIREMENTS_URL', 'https://raw.githubusercontent.com/{org}/'
+                                                             'kfp-notebook/{branch}/etc/requirements-elyra.txt'.
+                                                             format(org=ELYRA_GITHUB_ORG,
+                                                                    branch=ELYRA_GITHUB_BRANCH))
 
 
 class NotebookOp(ContainerOp):
@@ -112,19 +124,13 @@ class NotebookOp(ContainerOp):
             self.container_work_dir = self.container_work_dir_root_path + self.container_work_dir_name
             self.python_user_lib_path = self.container_work_dir + self.container_python_dir_name
             self.python_user_lib_path_target = '--target=' + self.python_user_lib_path
-            self.python_pip_config_url = 'https://raw.githubusercontent.com/{org}/' \
-                                         'kfp-notebook/{branch}/etc/pip.conf'. \
-                format(org=KFP_NOTEBOOK_ORG, branch=KFP_NOTEBOOK_BRANCH)
+            self.python_pip_config_url = ELYRA_PIP_CONFIG_URL
 
         if not self.bootstrap_script_url:
-            self.bootstrap_script_url = 'https://raw.githubusercontent.com/{org}/' \
-                                        'kfp-notebook/{branch}/etc/docker-scripts/bootstrapper.py'.\
-                format(org=KFP_NOTEBOOK_ORG, branch=KFP_NOTEBOOK_BRANCH)
+            self.bootstrap_script_url = ELYRA_BOOTSTRAP_SCRIPT_URL
 
         if not self.requirements_url:
-            self.requirements_url = 'https://raw.githubusercontent.com/{org}/' \
-                                    'kfp-notebook/{branch}/etc/requirements-elyra.txt'.\
-                format(org=KFP_NOTEBOOK_ORG, branch=KFP_NOTEBOOK_BRANCH)
+            self.requirements_url = ELYRA_REQUIREMENTS_URL
 
         if 'name' not in kwargs:
             raise TypeError("You need to provide a name for the operation.")
