@@ -229,9 +229,12 @@ class NotebookOp(ContainerOp):
             self.container.set_gpu_limit(gpu=str(gpu_limit), vendor=gpu_vendor)
 
         # Attach metadata to the pod
+        # Node type (a static type for this op)
         self.add_pod_label('elyra-node-type', 'notebook-script')
+        # Pipeline node name
         self.add_pod_label('elyra-node-name', kwargs.get('name'))
-        self.add_pod_annotation('node-file-name', self.notebook)
+        # Pipeline node file
+        self.add_pod_annotation('elyra-node-file-name', self.notebook)
 
     def _artifact_list_to_str(self, pipeline_array):
         trimmed_artifact_list = []
