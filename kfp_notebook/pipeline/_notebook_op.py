@@ -231,6 +231,10 @@ class NotebookOp(ContainerOp):
         # Attach metadata to the pod
         # Node type (a static type for this op)
         self.add_pod_label('elyra-node-type', 'notebook-script')
+        # Pipeline name
+        # Should we use kwargs.get('pipeline_name')?
+        self.add_pod_label('elyra-pipeline-name',
+                           self.cos_directory)
         # Pipeline node name
         self.add_pod_label('elyra-node-name', kwargs.get('name'))
         # Pipeline node file
