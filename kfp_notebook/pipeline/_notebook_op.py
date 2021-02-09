@@ -16,6 +16,7 @@
 #
 
 import os
+import string
 
 from kfp.dsl import ContainerOp
 from kfp_notebook import __version__
@@ -52,23 +53,28 @@ ELYRA_REQUIREMENTS_URL = os.getenv('ELYRA_REQUIREMENTS_URL', 'https://raw.github
 class NotebookOp(ContainerOp):
 
     def __init__(self,
+                 pipeline_name: str,
+                 experiment_name: str,
                  notebook: str,
                  cos_endpoint: str,
                  cos_bucket: str,
                  cos_directory: str,
                  cos_dependencies_archive: str,
+                 pipeline_version: Optional[str] = '',
                  pipeline_outputs: Optional[List[str]] = None,
                  pipeline_inputs: Optional[List[str]] = None,
                  pipeline_envs: Optional[Dict[str, str]] = None,
-                 requirements_url: str = None,
-                 bootstrap_script_url: str = None,
-                 emptydir_volume_size: str = None,
-                 cpu_request: str = None,
-                 mem_request: str = None,
-                 gpu_limit: str = None,
+                 requirements_url: Optional[str] = None,
+                 bootstrap_script_url: Optional[str] = None,
+                 emptydir_volume_size: Optional[str] = None,
+                 cpu_request: Optional[str] = None,
+                 mem_request: Optional[str] = None,
+                 gpu_limit: Optional[str] = None,
                  **kwargs):
         """Create a new instance of ContainerOp.
         Args:
+          pipeline_name: pipeline that this op belongs to
+          experiment_name: the experiment where pipeline_name is executed
           notebook: name of the notebook that will be executed per this operation
           cos_endpoint: object storage endpoint e.g weaikish1.fyre.ibm.com:30442
           cos_bucket: bucket to retrieve archive from
@@ -88,6 +94,9 @@ class NotebookOp(ContainerOp):
                   https://kubeflow-pipelines.readthedocs.io/en/latest/source/kfp.dsl.html#kfp.dsl.ContainerOp
         """
 
+        self.pipeline_name = pipeline_name
+        self.pipeline_version = pipeline_version
+        self.experiment_name = experiment_name
         self.notebook = notebook
         self.notebook_name = os.path.basename(notebook)
         self.cos_endpoint = cos_endpoint
@@ -230,15 +239,24 @@ class NotebookOp(ContainerOp):
 
         # Attach metadata to the pod
         # Node type (a static type for this op)
-        self.add_pod_label('elyra-node-type', 'notebook-script')
+        self.add_pod_label('elyra/node-type',
+                           NotebookOp._normalize_label_value(
+                               'notebook-script'))
         # Pipeline name
-        # Should we use kwargs.get('pipeline_name')?
-        self.add_pod_label('elyra-pipeline-name',
-                           self.cos_directory)
+        self.add_pod_label('elyra/pipeline-name',
+                           NotebookOp._normalize_label_value(self.pipeline_name))
+        # Pipeline version
+        self.add_pod_label('elyra/pipeline-version',
+                           NotebookOp._normalize_label_value(self.pipeline_version))
+        # Experiment name
+        self.add_pod_label('elyra/experiment-name',
+                           NotebookOp._normalize_label_value(self.experiment_name))
         # Pipeline node name
-        self.add_pod_label('elyra-node-name', kwargs.get('name'))
+        self.add_pod_label('elyra/node-name',
+                           NotebookOp._normalize_label_value(kwargs.get('name')))
         # Pipeline node file
-        self.add_pod_annotation('elyra-node-file-name', self.notebook)
+        self.add_pod_annotation('elyra/node-file-name',
+                                self.notebook)
 
     def _artifact_list_to_str(self, pipeline_array):
         trimmed_artifact_list = []
@@ -248,3 +266,40 @@ class NotebookOp(ContainerOp):
                     ValueError("Illegal character ({}) found in filename '{}'.".format(INOUT_SEPARATOR, artifact_name))
             trimmed_artifact_list.append(artifact_name.strip())
         return INOUT_SEPARATOR.join(trimmed_artifact_list)
+
+    @staticmethod
+    def _normalize_label_value(value):
+
+        """Produce a Kubernetes-compliant label from value
+
+        Valid label values must be 63 characters or less and
+        must be empty or begin and end with an alphanumeric
+        character ([a-z0-9A-Z]) with dashes (-), underscores
+        (_), dots (.), and alphanumerics between.
+        """
+
+        if value is None or len(value) == 0:
+            return ''   # nothing to do
+
+        value = value[:63]  # enforce max length 63
+
+        # must begin with [0-9a-zA-Z]
+        valid_chars = string.ascii_letters + string.digits
+        if value[0] not in valid_chars:
+            value = 'a' + value[1:]
+
+        # must end with [0-9a-zA-Z]
+        if value[len(value) - 1] not in valid_chars:
+            value = value[:len(value) - 1] + 'a'
+
+        valid_chars = valid_chars + '-_.'
+
+        newstr = ''
+        for c in range(len(value)):
+            if value[c] not in valid_chars:
+                newstr = newstr + '_'
+            else:
+                newstr = newstr + value[c]
+        value = newstr
+
+        return value
