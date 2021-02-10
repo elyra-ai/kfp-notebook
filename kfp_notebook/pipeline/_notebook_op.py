@@ -281,23 +281,35 @@ class NotebookOp(ContainerOp):
         if value is None or len(value) == 0:
             return ''   # nothing to do
 
-        value = value[:63]  # enforce max length 63
+        max_length = 63
+        replacement_char_first = 'a'
+        replacement_char_middle = '_'
+        replacement_char_last = 'a'
 
         # must begin with [0-9a-zA-Z]
         valid_chars = string.ascii_letters + string.digits
         if value[0] not in valid_chars:
-            value = 'a' + value[1:]
+            value = replacement_char_first + value
+
+        value = value[:max_length]  # enforce max length
 
         # must end with [0-9a-zA-Z]
         if value[-1] not in valid_chars:
-            value = value[:-1] + 'a'
+            if len(value) <= max_length - 1:
+                # append valid character if max length
+                # would not be exceeded
+                value = value + replacement_char_last
+            else:
+                # replace with valid character
+                value = value[:-1] + replacement_char_last
 
+        # middle chars must be [0-9a-zA-Z\-_.]
         valid_chars = valid_chars + '-_.'
 
         newstr = ''
         for c in range(len(value)):
             if value[c] not in valid_chars:
-                newstr = newstr + '_'
+                newstr = newstr + replacement_char_middle
             else:
                 newstr = newstr + value[c]
         value = newstr
