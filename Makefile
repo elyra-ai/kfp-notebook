@@ -63,7 +63,7 @@ test-dependencies:
 	@pip install -q -r test-requirements.txt
 
 test: test-dependencies test-start-minio ## run tests quickly with the default Python
-	coverage run -m pytest -v || $$(make test-stop-minio)
+	- coverage run -m pytest -v
 	@make test-stop-minio
 
 test-start-minio: ## start test_minio container (dev testing)
