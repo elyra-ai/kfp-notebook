@@ -289,8 +289,8 @@ class NotebookOp(ContainerOp):
             value = 'a' + value[1:]
 
         # must end with [0-9a-zA-Z]
-        if value[len(value) - 1] not in valid_chars:
-            value = value[:len(value) - 1] + 'a'
+        if value[-1] not in valid_chars:
+            value = value[:-1] + 'a'
 
         valid_chars = valid_chars + '-_.'
 
