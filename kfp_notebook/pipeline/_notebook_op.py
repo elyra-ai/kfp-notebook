@@ -292,7 +292,7 @@ class NotebookOp(ContainerOp):
         # that are in the "middle" of value. For example
         # a value of "abc%def" is converted to "abc_def".
         # The specified character must meet the label value
-        # constraints. 
+        # constraints.
         valid_middle_char = '_'
 
         # must begin with [0-9a-zA-Z]
