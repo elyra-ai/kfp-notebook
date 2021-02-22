@@ -63,14 +63,13 @@ test-dependencies:
 	@pip install -q -r test-requirements.txt
 
 test: test-dependencies test-start-minio ## run tests quickly with the default Python
-	coverage run -m pytest -v || $$(make test-stop-minio)
-	@make test-stop-minio
+	coverage run -m pytest -v; r=$$?; $(MAKE) test-stop-minio; exit $$r
 
 test-start-minio: ## start test_minio container (dev testing)
 	docker run --name test_minio -d -p 9000:9000 minio/minio server /data
 
 test-stop-minio: ## stop test_minio container (dev testing)
-	@docker rm -f test_minio
+	@-docker rm -f test_minio >/dev/null 2>&1
 
 test-all: ## run tests on every Python version with tox
 	tox
