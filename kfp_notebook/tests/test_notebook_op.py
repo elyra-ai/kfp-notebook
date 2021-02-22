@@ -13,13 +13,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import pytest
 from kfp_notebook.pipeline import NotebookOp
+import pytest
+import string
 
 
 @pytest.fixture
 def notebook_op():
     return NotebookOp(name="test",
+                      pipeline_name="test-pipeline",
+                      experiment_name="experiment-name",
                       notebook="test_notebook.ipynb",
                       cos_endpoint="http://testserver:32525",
                       cos_bucket="test_bucket",
@@ -31,6 +34,8 @@ def notebook_op():
 def test_fail_without_cos_endpoint():
     with pytest.raises(TypeError):
         NotebookOp(name="test",
+                   pipeline_name="test-pipeline",
+                   experiment_name="experiment-name",
                    notebook="test_notebook.ipynb",
                    cos_bucket="test_bucket",
                    cos_directory="test_directory",
@@ -41,6 +46,8 @@ def test_fail_without_cos_endpoint():
 def test_fail_without_cos_bucket():
     with pytest.raises(TypeError):
         NotebookOp(name="test",
+                   pipeline_name="test-pipeline",
+                   experiment_name="experiment-name",
                    notebook="test_notebook.ipynb",
                    cos_endpoint="http://testserver:32525",
                    cos_directory="test_directory",
@@ -51,6 +58,8 @@ def test_fail_without_cos_bucket():
 def test_fail_without_cos_directory():
     with pytest.raises(TypeError):
         NotebookOp(name="test",
+                   pipeline_name="test-pipeline",
+                   experiment_name="experiment-name",
                    notebook="test_notebook.ipynb",
                    cos_endpoint="http://testserver:32525",
                    cos_bucket="test_bucket",
@@ -61,6 +70,8 @@ def test_fail_without_cos_directory():
 def test_fail_without_cos_dependencies_archive():
     with pytest.raises(TypeError):
         NotebookOp(name="test",
+                   pipeline_name="test-pipeline",
+                   experiment_name="experiment-name",
                    notebook="test_notebook.ipynb",
                    cos_endpoint="http://testserver:32525",
                    cos_bucket="test_bucket",
@@ -71,6 +82,8 @@ def test_fail_without_cos_dependencies_archive():
 def test_fail_without_runtime_image():
     with pytest.raises(ValueError) as error_info:
         NotebookOp(name="test",
+                   pipeline_name="test-pipeline",
+                   experiment_name="experiment-name",
                    notebook="test_notebook.ipynb",
                    cos_endpoint="http://testserver:32525",
                    cos_bucket="test_bucket",
@@ -82,6 +95,8 @@ def test_fail_without_runtime_image():
 def test_fail_without_notebook():
     with pytest.raises(TypeError):
         NotebookOp(name="test",
+                   pipeline_name="test-pipeline",
+                   experiment_name="experiment-name",
                    cos_endpoint="http://testserver:32525",
                    cos_bucket="test_bucket",
                    cos_directory="test_directory",
@@ -91,7 +106,9 @@ def test_fail_without_notebook():
 
 def test_fail_without_name():
     with pytest.raises(TypeError):
-        NotebookOp(notebook="test_notebook.ipynb",
+        NotebookOp(pipeline_name="test-pipeline",
+                   experiment_name="experiment-name",
+                   notebook="test_notebook.ipynb",
                    cos_endpoint="http://testserver:32525",
                    cos_bucket="test_bucket",
                    cos_directory="test_directory",
@@ -102,6 +119,8 @@ def test_fail_without_name():
 def test_fail_with_empty_string_as_name():
     with pytest.raises(ValueError):
         NotebookOp(name="",
+                   pipeline_name="test-pipeline",
+                   experiment_name="experiment-name",
                    notebook="test_notebook.ipynb",
                    cos_endpoint="http://testserver:32525",
                    cos_bucket="test_bucket",
@@ -113,6 +132,8 @@ def test_fail_with_empty_string_as_name():
 def test_fail_with_empty_string_as_notebook():
     with pytest.raises(ValueError) as error_info:
         NotebookOp(name="test",
+                   pipeline_name="test-pipeline",
+                   experiment_name="experiment-name",
                    notebook="",
                    cos_endpoint="http://testserver:32525",
                    cos_bucket="test_bucket",
@@ -122,8 +143,34 @@ def test_fail_with_empty_string_as_notebook():
     assert "You need to provide a notebook." == str(error_info.value)
 
 
+def test_fail_without_pipeline_name():
+    with pytest.raises(TypeError):
+        NotebookOp(name="test",
+                   experiment_name="experiment-name",
+                   notebook="test_notebook.ipynb",
+                   cos_endpoint="http://testserver:32525",
+                   cos_bucket="test_bucket",
+                   cos_directory="test_directory",
+                   cos_dependencies_archive="test_archive.tgz",
+                   image="test/image:dev")
+
+
+def test_fail_without_experiment_name():
+    with pytest.raises(TypeError):
+        NotebookOp(name="test",
+                   pipeline_name="test-pipeline",
+                   notebook="test_notebook.ipynb",
+                   cos_endpoint="http://testserver:32525",
+                   cos_bucket="test_bucket",
+                   cos_directory="test_directory",
+                   cos_dependencies_archive="test_archive.tgz",
+                   image="test/image:dev")
+
+
 def test_properly_set_notebook_name_when_in_subdirectory():
     notebook_op = NotebookOp(name="test",
+                             pipeline_name="test-pipeline",
+                             experiment_name="experiment-name",
                              notebook="foo/test_notebook.ipynb",
                              cos_endpoint="http://testserver:32525",
                              cos_bucket="test_bucket",
@@ -135,6 +182,8 @@ def test_properly_set_notebook_name_when_in_subdirectory():
 
 def test_properly_set_python_script_name_when_in_subdirectory():
     notebook_op = NotebookOp(name="test",
+                             pipeline_name="test-pipeline",
+                             experiment_name="experiment-name",
                              notebook="foo/test.py",
                              cos_endpoint="http://testserver:32525",
                              cos_bucket="test_bucket",
@@ -146,6 +195,8 @@ def test_properly_set_python_script_name_when_in_subdirectory():
 
 def test_user_crio_volume_creation():
     notebook_op = NotebookOp(name="test",
+                             pipeline_name="test-pipeline",
+                             experiment_name="experiment-name",
                              notebook="test_notebook.ipynb",
                              cos_endpoint="http://testserver:32525",
                              cos_bucket="test_bucket",
@@ -167,6 +218,8 @@ def test_default_bootstrap_url(notebook_op):
 
 def test_override_bootstrap_url():
     notebook_op = NotebookOp(name="test",
+                             pipeline_name="test-pipeline",
+                             experiment_name="experiment-name",
                              bootstrap_script_url="https://test.server.com/bootscript.py",
                              notebook="test_notebook.ipynb",
                              cos_endpoint="http://testserver:32525",
@@ -185,6 +238,8 @@ def test_default_requirements_url(notebook_op):
 
 def test_override_requirements_url():
     notebook_op = NotebookOp(name="test",
+                             pipeline_name="test-pipeline",
+                             experiment_name="experiment-name",
                              requirements_url="https://test.server.com/requirements.py",
                              notebook="test_notebook.ipynb",
                              cos_endpoint="http://testserver:32525",
@@ -197,6 +252,8 @@ def test_override_requirements_url():
 
 def test_construct_with_both_pipeline_inputs_and_outputs():
     notebook_op = NotebookOp(name="test",
+                             pipeline_name="test-pipeline",
+                             experiment_name="experiment-name",
                              notebook="test_notebook.ipynb",
                              cos_endpoint="http://testserver:32525",
                              cos_bucket="test_bucket",
@@ -214,6 +271,8 @@ def test_construct_with_both_pipeline_inputs_and_outputs():
 
 def test_construct_wiildcard_outputs():
     notebook_op = NotebookOp(name="test",
+                             pipeline_name="test-pipeline",
+                             experiment_name="experiment-name",
                              notebook="test_notebook.ipynb",
                              cos_endpoint="http://testserver:32525",
                              cos_bucket="test_bucket",
@@ -231,6 +290,8 @@ def test_construct_wiildcard_outputs():
 
 def test_construct_with_only_pipeline_inputs():
     notebook_op = NotebookOp(name="test",
+                             pipeline_name="test-pipeline",
+                             experiment_name="experiment-name",
                              notebook="test_notebook.ipynb",
                              cos_endpoint="http://testserver:32525",
                              cos_bucket="test_bucket",
@@ -246,6 +307,8 @@ def test_construct_with_only_pipeline_inputs():
 def test_construct_with_bad_pipeline_inputs():
     with pytest.raises(ValueError) as error_info:
         NotebookOp(name="test",
+                   pipeline_name="test-pipeline",
+                   experiment_name="experiment-name",
                    notebook="test_notebook.ipynb",
                    cos_endpoint="http://testserver:32525",
                    cos_bucket="test_bucket",
@@ -259,6 +322,8 @@ def test_construct_with_bad_pipeline_inputs():
 
 def test_construct_with_only_pipeline_outputs():
     notebook_op = NotebookOp(name="test",
+                             pipeline_name="test-pipeline",
+                             experiment_name="experiment-name",
                              notebook="test_notebook.ipynb",
                              cos_endpoint="http://testserver:32525",
                              cos_bucket="test_bucket",
@@ -274,6 +339,8 @@ def test_construct_with_only_pipeline_outputs():
 def test_construct_with_bad_pipeline_outputs():
     with pytest.raises(ValueError) as error_info:
         NotebookOp(name="test",
+                   pipeline_name="test-pipeline",
+                   experiment_name="experiment-name",
                    notebook="test_notebook.ipynb",
                    cos_endpoint="http://testserver:32525",
                    cos_bucket="test_bucket",
@@ -286,6 +353,8 @@ def test_construct_with_bad_pipeline_outputs():
 
 def test_construct_with_env_variables():
     notebook_op = NotebookOp(name="test",
+                             pipeline_name="test-pipeline",
+                             experiment_name="experiment-name",
                              notebook="test_notebook.ipynb",
                              cos_endpoint="http://testserver:32525",
                              cos_bucket="test_bucket",
@@ -305,3 +374,129 @@ def test_construct_with_env_variables():
     # Verify confirmation values have been drained.
     assert len(confirmation_names) == 0
     assert len(confirmation_values) == 0
+
+
+def test_normalize_label_value():
+    valid_middle_chars = '-_.'
+
+    # test min length
+    assert NotebookOp._normalize_label_value(None) == ''
+    assert NotebookOp._normalize_label_value('') == ''
+    # test max length (63)
+    assert NotebookOp._normalize_label_value('a' * 63) ==\
+        'a' * 63
+    assert NotebookOp._normalize_label_value('a' * 64) ==\
+        'a' * 63  # truncated
+    # test first and last char
+    assert NotebookOp._normalize_label_value('1') == '1'
+    assert NotebookOp._normalize_label_value('22') == '22'
+    assert NotebookOp._normalize_label_value('3_3') == '3_3'
+    assert NotebookOp._normalize_label_value('4u4') == '4u4'
+    assert NotebookOp._normalize_label_value('5$5') == '5_5'
+
+    # test first char
+    for c in string.printable:
+        if c in string.ascii_letters + string.digits:
+            # first char is valid
+            # no length violation
+            assert NotebookOp._normalize_label_value(c) == c
+            assert NotebookOp._normalize_label_value(c + 'B') == c + 'B'
+            # max length
+            assert NotebookOp._normalize_label_value(c + 'B' * 62) ==\
+                (c + 'B' * 62)
+            # max length exceeded
+            assert NotebookOp._normalize_label_value(c + 'B' * 63) ==\
+                (c + 'B' * 62)  # truncated
+        else:
+            # first char is invalid, e.g. '#a', and becomes the
+            # second char, which might require replacement
+            rv = c
+            if c not in valid_middle_chars:
+                rv = '_'
+            # no length violation
+            assert NotebookOp._normalize_label_value(c) == 'a' + rv + 'a'
+            assert NotebookOp._normalize_label_value(c + 'B') == 'a' + rv + 'B'
+            # max length
+            assert NotebookOp._normalize_label_value(c + 'B' * 62) ==\
+                ('a' + rv + 'B' * 61)  # truncated
+            # max length exceeded
+            assert NotebookOp._normalize_label_value(c + 'B' * 63) ==\
+                ('a' + rv + 'B' * 61)  # truncated
+
+    # test last char
+    for c in string.printable:
+        if c in string.ascii_letters + string.digits:
+            # no length violation
+            assert NotebookOp._normalize_label_value('b' + c) == 'b' + c
+            # max length
+            assert NotebookOp._normalize_label_value('b' * 62 + c) ==\
+                ('b' * 62 + c)
+            # max length exceeded
+            assert NotebookOp._normalize_label_value('b' * 63 + c) ==\
+                ('b' * 63)
+        else:
+            # last char is invalid, e.g. 'a#', and requires
+            # patching
+            rv = c
+            if c not in valid_middle_chars:
+                rv = '_'
+            # no length violation (char is appended)
+            assert NotebookOp._normalize_label_value('b' + c) == 'b' + rv + 'a'
+            # max length (char is replaced)
+            assert NotebookOp._normalize_label_value('b' * 62 + c) ==\
+                ('b' * 62 + 'a')
+            # max length exceeded (no action required)
+            assert NotebookOp._normalize_label_value('b' * 63 + c) ==\
+                ('b' * 63)
+
+    # test first and last char
+    for c in string.printable:
+        if c in string.ascii_letters + string.digits:
+            # no length violation
+            assert NotebookOp._normalize_label_value(c + 'b' + c) ==\
+                c + 'b' + c  # nothing is modified
+            # max length
+            assert NotebookOp._normalize_label_value(c + 'b' * 61 + c) ==\
+                (c + 'b' * 61 + c)  # nothing is modified
+            # max length exceeded
+            assert NotebookOp._normalize_label_value(c + 'b' * 62 + c) ==\
+                c + 'b' * 62  # truncate only
+        else:
+            # first and last characters are invalid, e.g. '#a#'
+            rv = c
+            if c not in valid_middle_chars:
+                rv = '_'
+            # no length violation
+            assert NotebookOp._normalize_label_value(c + 'b' + c) ==\
+                'a' + rv + 'b' + rv + 'a'
+            # max length
+            assert NotebookOp._normalize_label_value(c + 'b' * 59 + c) ==\
+                ('a' + rv + 'b' * 59 + rv + 'a')
+            # max length exceeded after processing, scenario 1
+            # resolved by adding char before first, replace last
+            assert NotebookOp._normalize_label_value(c + 'b' * 60 + c) ==\
+                ('a' + rv + 'b' * 60 + 'a')
+            # max length exceeded after processing, scenario 2
+            # resolved by adding char before first, appending after last
+            assert NotebookOp._normalize_label_value(c + 'b' * 59 + c) ==\
+                ('a' + rv + 'b' * 59 + rv + 'a')
+            # max length exceeded before processing, scenario 1
+            # resolved by adding char before first, truncating last
+            assert NotebookOp._normalize_label_value(c + 'b' * 62 + c) ==\
+                ('a' + rv + 'b' * 61)
+            # max length exceeded before processing, scenario 2
+            # resolved by adding char before first, replacing last
+            assert NotebookOp._normalize_label_value(c + 'b' * 60 + c * 3) ==\
+                ('a' + rv + 'b' * 60 + 'a')
+
+    # test char in a position other than first and last
+    # if invalid, the char is replaced with '_'
+    for c in string.printable:
+        if c in string.ascii_letters + string.digits + '-_.':
+            assert NotebookOp._normalize_label_value('A' + c + 'Z') ==\
+                'A' + c + 'Z'
+        else:
+            assert NotebookOp._normalize_label_value('A' + c + 'Z') == 'A_Z'
+
+    # encore
+    assert NotebookOp._normalize_label_value(r'¯\_(ツ)_/¯') == 'a_________a'
