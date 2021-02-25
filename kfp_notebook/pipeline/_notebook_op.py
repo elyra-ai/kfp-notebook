@@ -61,6 +61,7 @@ class NotebookOp(ContainerOp):
                  cos_directory: str,
                  cos_dependencies_archive: str,
                  pipeline_version: Optional[str] = '',
+                 pipeline_source: Optional[str] = None,
                  pipeline_outputs: Optional[List[str]] = None,
                  pipeline_inputs: Optional[List[str]] = None,
                  pipeline_envs: Optional[Dict[str, str]] = None,
@@ -80,6 +81,8 @@ class NotebookOp(ContainerOp):
           cos_bucket: bucket to retrieve archive from
           cos_directory: name of the directory in the object storage bucket to pull
           cos_dependencies_archive: archive file name to get from object storage bucket e.g archive1.tar.gz
+          pipeline_version: optional version identifier
+          pipeline_source: pipeline source
           pipeline_outputs: comma delimited list of files produced by the notebook
           pipeline_inputs: comma delimited list of files to be consumed/are required by the notebook
           pipeline_envs: dictionary of environmental variables to set in the container prior to execution
@@ -96,6 +99,7 @@ class NotebookOp(ContainerOp):
 
         self.pipeline_name = pipeline_name
         self.pipeline_version = pipeline_version
+        self.pipeline_source = pipeline_source
         self.experiment_name = experiment_name
         self.notebook = notebook
         self.notebook_name = os.path.basename(notebook)
@@ -257,6 +261,13 @@ class NotebookOp(ContainerOp):
         # Pipeline node file
         self.add_pod_annotation('elyra/node-file-name',
                                 self.notebook)
+
+        # Identify the pipeline source, which can be a
+        # pipeline file (mypipeline.pipeline), a Python
+        # script or notebook that was submitted
+        if self.pipeline_source is not None:
+            self.add_pod_annotation('elyra/pipeline-source',
+                                    self.pipeline_source)
 
     def _artifact_list_to_str(self, pipeline_array):
         trimmed_artifact_list = []
