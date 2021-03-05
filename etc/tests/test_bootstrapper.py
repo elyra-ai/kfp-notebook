@@ -16,6 +16,7 @@
 
 import json
 import hashlib
+import jupyter_core.paths
 import logging
 import minio
 import nbformat
@@ -60,6 +61,15 @@ def s3_setup():
     for file in cleanup_files:
         cos_client.remove_object(bucket_name, file.object_name)
     cos_client.remove_bucket(bucket_name)
+
+
+@pytest.fixture
+def native_kspec(monkeypatch):
+    """Sets various jupyter paths to /tmp so that only the native kernelspec is found """
+    monkeypatch.setenv("JUPYTER_PATH", "/tmp")
+    monkeypatch.setenv("JUPYTER_DATA_DIR", "/tmp")
+    setattr(jupyter_core.paths, 'ENV_JUPYTER_PATH', "/tmp")
+    setattr(jupyter_core.paths, 'SYSTEM_JUPYTER_PATH', "/tmp")
 
 
 def main_method_setup_execution(monkeypatch, s3_setup, tmpdir, argument_dict):
@@ -689,6 +699,24 @@ def test_find_best_kernel_nomatch(tmpdir, caplog):
         assert kernel_name == 'test-kernel'
         assert len(caplog.records) == 1
         assert caplog.records[0].message.startswith("Reverting back to missing notebook kernel 'test-kernel'")
+
+
+def test_find_best_kernel_native(tmpdir, caplog, native_kspec):
+    caplog.set_level(logging.INFO)
+    source_nb_file = os.path.join(os.getcwd(), "etc/tests/resources/test-notebookA.ipynb")
+    nb_file = os.path.join(tmpdir, "test-notebookA.ipynb")
+
+    # "Copy" nb file to destination after updating the kernel name - forcing a language match
+    nb = nbformat.read(source_nb_file, 4)
+    nb.metadata.kernelspec['name'] = 'test-kernel'
+    nb.metadata.kernelspec['language'] = 'PYTHON'  # test case-insensitivity
+    nbformat.write(nb, nb_file)
+
+    with tmpdir.as_cwd():
+        kernel_name = bootstrapper.NotebookFileOp.find_best_kernel(nb_file)
+        assert kernel_name == 'python3'
+        assert len(caplog.records) == 1
+        assert caplog.records[0].message.startswith("Matched kernel by language (python), using native kernel")
 
 
 def test_parse_arguments():

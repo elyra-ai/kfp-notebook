@@ -395,7 +395,7 @@ class NotebookFileOp(FileOpBase):
         """
         import json
         import nbformat
-        from jupyter_client.kernelspec import KernelSpecManager
+        from jupyter_client.kernelspec import KernelSpecManager, NATIVE_KERNEL_NAME
 
         nb = nbformat.read(notebook_file, 4)
 
@@ -410,15 +410,23 @@ class NotebookFileOp(FileOpBase):
             return nb_kernel_name
 
         # no match found for kernel, try matching language...
-        for name, file in kernel_specs.items():
+        for name, directory in kernel_specs.items():
             # load file (JSON) and pick out language, if match, use first found
-            with open(os.path.join(file, 'kernel.json')) as f:
-                kspec = json.load(f)
-                if kspec.get('language').lower() == nb_kernel_lang.lower():
-                    matched_kernel = os.path.basename(file)
-                    logger.info(f"Matched kernel by language ({nb_kernel_lang}), using kernel "
-                                f"'{matched_kernel}' instead of the missing kernel '{nb_kernel_name}'.")
-                    return matched_kernel
+            try:
+                with open(os.path.join(directory, 'kernel.json')) as f:
+                    kspec = json.load(f)
+                    if kspec.get('language').lower() == nb_kernel_lang.lower():
+                        matched_kernel = os.path.basename(directory)
+                        logger.info(f"Matched kernel by language ({nb_kernel_lang}), using kernel "
+                                    f"'{matched_kernel}' instead of the missing kernel '{nb_kernel_name}'.")
+                        return matched_kernel
+            except FileNotFoundError:
+                logger.debug(f"{directory} has no kernel.json file, checking for 'native' kernel...")
+                if name == NATIVE_KERNEL_NAME:  # if we have the NATIVE_KERNEL_NAME, we must assume its python
+                    if nb_kernel_lang.lower().startswith('python'):
+                        logger.info(f"Matched kernel by language (python), using native kernel "
+                                    f"'{name}' instead of the missing kernel '{nb_kernel_name}'.")
+                        return name
 
         # no match found for language, return notebook kernel and let execution fail
         logger.warning(f"Reverting back to missing notebook kernel '{nb_kernel_name}' since no "
