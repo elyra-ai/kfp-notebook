@@ -173,9 +173,11 @@ class NotebookOp(ContainerOp):
             if self.emptydir_volume_size:
                 argument_list.append('mkdir {container_python_dir} && cd {container_python_dir} && '
                                      'curl -H "Cache-Control: no-cache" -L {python_pip_config_url} '
-                                     '--output pip.conf && cd .. &&'
+                                     '--output pip.conf && cd .. && '
+                                     'export PYTHONPATH={python_user_lib_path}/$PYTHONPATH &&'
                                      .format(python_pip_config_url=self.python_pip_config_url,
-                                             container_python_dir=self.container_python_dir_name)
+                                             container_python_dir=self.container_python_dir_name,
+                                             python_user_lib_path=self.python_user_lib_path)
                                      )
 
             argument_list.append('python3 -m pip install {python_user_lib_path_target} packaging && '
@@ -226,10 +228,6 @@ class NotebookOp(ContainerOp):
 
             self.container.add_volume_mount(V1VolumeMount(mount_path=self.container_work_dir_root_path,
                                                           name=self.emptydir_volume_name))
-
-            # Append to PYTHONPATH location of elyra dependencies in installed in Volume
-            self.container.add_env_variable(V1EnvVar(name='PYTHONPATH',
-                                                     value=self.python_user_lib_path))
 
         if self.cpu_request:
             self.container.set_cpu_request(cpu=str(cpu_request))
