@@ -58,6 +58,8 @@ class FileOpBase(ABC):
             return NotebookFileOp(**kwargs)
         elif '.py' in filepath:
             return PythonFileOp(**kwargs)
+        elif '.r' in filepath:
+            return RFileOp(**kwargs)
         else:
             raise ValueError('Unsupported file type: {}'.format(filepath))
 
@@ -453,6 +455,36 @@ class PythonFileOp(FileOpBase):
             logger.error("Error details: {}".format(ex))
 
             self.put_file_to_object_storage(python_script_output, python_script_output)
+            raise ex
+
+
+class RFileOp(FileOpBase):
+    """Perform R File Operation"""
+
+    def execute(self) -> None:
+        """Execute the R script and upload results to object storage"""
+        r_script = os.path.basename(self.filepath)
+        r_script_name = r_script.replace('.r', '')
+        r_script_output = r_script_name + '.log'
+
+        try:
+            OpUtil.log_operation_info(f"executing R script using "
+                                      f"'Rscript {r_script}' to '{r_script_output}'")
+            t0 = time.time()
+            with open(r_script_output, "w") as log_file:
+                subprocess.run(['Rscript', r_script], stdout=log_file, stderr=subprocess.STDOUT, check=True)
+
+            duration = time.time() - t0
+            OpUtil.log_operation_info("R script execution completed", duration)
+
+            self.put_file_to_object_storage(r_script_output, r_script_output)
+            self.process_outputs()
+        except Exception as ex:
+            # log in case of errors
+            logger.error("Unexpected error: {}".format(sys.exc_info()[0]))
+            logger.error("Error details: {}".format(ex))
+
+            self.put_file_to_object_storage(r_script_output, r_script_output)
             raise ex
 
 
