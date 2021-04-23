@@ -71,11 +71,14 @@ class FileOpBase(ABC):
         self.input_params = kwargs or []
         self.cos_endpoint = urlparse(self.input_params.get('cos-endpoint'))
         self.cos_bucket = self.input_params.get('cos-bucket')
-        # TODO(check hardcoded false)
+
+        # Infer secure from the endpoint's scheme.
+        self.secure = self.cos_endpoint.scheme == 'https'
+
         self.cos_client = minio.Minio(self.cos_endpoint.netloc,
                                       access_key=os.getenv('AWS_ACCESS_KEY_ID'),
                                       secret_key=os.getenv('AWS_SECRET_ACCESS_KEY'),
-                                      secure=False)
+                                      secure=self.secure)
 
     @abstractmethod
     def execute(self) -> None:
