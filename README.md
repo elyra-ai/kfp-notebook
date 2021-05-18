@@ -16,8 +16,9 @@ limitations under the License.
 {% endcomment %}
 -->
 
-KFP-Notebook is an operator that enable running notebooks as part of a Kubeflow Pipeline.
+[![PyPI version](https://badge.fury.io/py/kfp-notebook.svg)](https://badge.fury.io/py/kfp-notebook)
 
+`kfp-notebook` implements Kubeflow Pipelines operator `NotebookOp` that supports processing of notebooks, Python scripts, and R scripts in pipelines.
 
 ## Building kfp-notebook
 
