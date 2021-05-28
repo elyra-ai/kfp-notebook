@@ -31,7 +31,7 @@ requirements = [
     'tox>=2.9.1',
     'coverage>=4.5.1',
     'twine>=1.10.0',
-    'kfp==1.3.0',
+    'kfp==1.4.0',
 ]
 
 setup_requirements = [ ]
