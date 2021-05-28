@@ -56,7 +56,7 @@ clean-test:
 	rm -fr htmlcov/
 	rm -fr .pytest_cache
 
-lint: ## check style with flake8
+lint: test-dependencies ## check style with flake8
 	flake8 kfp_notebook etc
 
 test-dependencies:
