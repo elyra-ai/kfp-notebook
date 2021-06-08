@@ -19,6 +19,7 @@ import os
 import string
 
 from kfp.dsl import ContainerOp
+from kfp.dsl import RUN_ID_PLACEHOLDER
 from kfp_notebook import __version__
 from kubernetes.client.models import V1EmptyDirVolumeSource, V1EnvVar, V1Volume, V1VolumeMount
 from typing import Dict, List, Optional
@@ -240,6 +241,15 @@ class NotebookOp(ContainerOp):
         if self.gpu_limit:
             gpu_vendor = self.pipeline_envs.get('GPU_VENDOR', 'nvidia')
             self.container.set_gpu_limit(gpu=str(gpu_limit), vendor=gpu_vendor)
+
+        # Generate unique ELYRA_RUN_ID value and expose it as an environment
+        # variable in the container
+        if self.pipeline_version:
+            elyra_run_id_val = f'{self.pipeline_version}-{RUN_ID_PLACEHOLDER}'
+        else:
+            elyra_run_id_val = f'{self.pipeline_name}-{RUN_ID_PLACEHOLDER}'
+        self.container.add_env_variable(V1EnvVar(name='ELYRA_RUN_ID',
+                                                 value=elyra_run_id_val))
 
         # Attach metadata to the pod
         # Node type (a static type for this op)
