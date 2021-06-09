@@ -207,7 +207,7 @@ def test_user_crio_volume_creation():
     assert notebook_op.emptydir_volume_size == '20Gi'
     assert notebook_op.container_work_dir_root_path == '/opt/app-root/src/'
     assert notebook_op.container.volume_mounts.__len__() == 1
-    assert notebook_op.container.env.__len__() == 1
+    assert notebook_op.container.env.__len__() == 1, notebook_op.container.env
 
 
 @pytest.mark.skip(reason="not sure if we should even test this")
@@ -269,7 +269,7 @@ def test_construct_with_both_pipeline_inputs_and_outputs():
     assert '--outputs "test_output1.txt;test_output2.txt"' in notebook_op.container.args[0]
 
 
-def test_construct_wiildcard_outputs():
+def test_construct_wildcard_outputs():
     notebook_op = NotebookOp(name="test",
                              pipeline_name="test-pipeline",
                              experiment_name="experiment-name",
@@ -363,13 +363,18 @@ def test_construct_with_env_variables():
                              pipeline_envs={"ENV_VAR_ONE": "1", "ENV_VAR_TWO": "2", "ENV_VAR_THREE": "3"},
                              image="test/image:dev")
 
-    confirmation_names = ["ENV_VAR_ONE", "ENV_VAR_TWO", "ENV_VAR_THREE"]
+    confirmation_names = ["ENV_VAR_ONE", "ENV_VAR_TWO", "ENV_VAR_THREE",
+                          "ELYRA_RUN_ID"]
     confirmation_values = ["1", "2", "3"]
     for env_val in notebook_op.container.env:
         assert env_val.name in confirmation_names
-        assert env_val.value in confirmation_values
-        confirmation_names.remove(env_val.name)
-        confirmation_values.remove(env_val.value)
+        if env_val.name == 'ELYRA_RUN_ID':
+            assert env_val.value.startswith('test-pipeline')
+            confirmation_names.remove(env_val.name)
+        else:
+            assert env_val.value in confirmation_values
+            confirmation_names.remove(env_val.name)
+            confirmation_values.remove(env_val.value)
 
     # Verify confirmation values have been drained.
     assert len(confirmation_names) == 0
