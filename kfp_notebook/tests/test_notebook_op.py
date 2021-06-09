@@ -207,7 +207,8 @@ def test_user_crio_volume_creation():
     assert notebook_op.emptydir_volume_size == '20Gi'
     assert notebook_op.container_work_dir_root_path == '/opt/app-root/src/'
     assert notebook_op.container.volume_mounts.__len__() == 1
-    assert notebook_op.container.env.__len__() == 1, notebook_op.container.env
+    # Environment variables: PYTHONPATH, ELYRA_RUN_ID
+    assert notebook_op.container.env.__len__() == 2, notebook_op.container.env
 
 
 @pytest.mark.skip(reason="not sure if we should even test this")
