@@ -19,7 +19,6 @@ import os
 import string
 
 from kfp.dsl import ContainerOp
-from kfp.dsl import RUN_ID_PLACEHOLDER
 from kfp_notebook import __version__
 from kubernetes.client.models import V1EmptyDirVolumeSource, V1EnvVar, V1Volume, V1VolumeMount
 from typing import Dict, List, Optional
@@ -72,6 +71,7 @@ class NotebookOp(ContainerOp):
                  cpu_request: Optional[str] = None,
                  mem_request: Optional[str] = None,
                  gpu_limit: Optional[str] = None,
+                 workflow_engine: Optional[str] = 'argo',
                  **kwargs):
         """Create a new instance of ContainerOp.
         Args:
@@ -93,6 +93,7 @@ class NotebookOp(ContainerOp):
           cpu_request: number of CPUs requested for the operation
           mem_request: memory requested for the operation (in Gi)
           gpu_limit: maximum number of GPUs allowed for the operation
+          workflow_engine: Kubeflow workflow engine, defaults to 'argo'
           kwargs: additional key value pairs to pass e.g. name, image, sidecars & is_exit_handler.
                   See Kubeflow pipelines ContainerOp definition for more parameters or how to use
                   https://kubeflow-pipelines.readthedocs.io/en/latest/source/kfp.dsl.html#kfp.dsl.ContainerOp
@@ -242,14 +243,14 @@ class NotebookOp(ContainerOp):
             gpu_vendor = self.pipeline_envs.get('GPU_VENDOR', 'nvidia')
             self.container.set_gpu_limit(gpu=str(gpu_limit), vendor=gpu_vendor)
 
-        # Generate unique ELYRA_RUN_ID value and expose it as an environment
+        # Generate unique ELYRA_RUN_NAME value and expose it as an environment
         # variable in the container
-        if self.pipeline_version:
-            elyra_run_id_val = f'{self.pipeline_version}-{RUN_ID_PLACEHOLDER}'
+        if workflow_engine and workflow_engine.lower() == 'argo':
+            run_name_placeholder = '{{workflow.annotations.pipelines.kubeflow.org/run_name}}'
         else:
-            elyra_run_id_val = f'{self.pipeline_name}-{RUN_ID_PLACEHOLDER}'
-        self.container.add_env_variable(V1EnvVar(name='ELYRA_RUN_ID',
-                                                 value=elyra_run_id_val))
+            run_name_placeholder = '$(context.pipelineRun.name)'
+        self.container.add_env_variable(V1EnvVar(name='ELYRA_RUN_NAME',
+                                                 value=run_name_placeholder))
 
         # Attach metadata to the pod
         # Node type (a static type for this op)
