@@ -207,7 +207,7 @@ def test_user_crio_volume_creation():
     assert notebook_op.emptydir_volume_size == '20Gi'
     assert notebook_op.container_work_dir_root_path == '/opt/app-root/src/'
     assert notebook_op.container.volume_mounts.__len__() == 1
-    # Environment variables: PYTHONPATH, ELYRA_RUN_ID
+    # Environment variables: PYTHONPATH, ELYRA_RUN_NAME
     assert notebook_op.container.env.__len__() == 2, notebook_op.container.env
 
 
@@ -352,7 +352,7 @@ def test_construct_with_bad_pipeline_outputs():
     assert "Illegal character (;) found in filename 'test;output2.txt'." == str(error_info.value)
 
 
-def test_construct_with_env_variables():
+def test_construct_with_env_variables_argo():
     notebook_op = NotebookOp(name="test",
                              pipeline_name="test-pipeline",
                              experiment_name="experiment-name",
@@ -365,17 +365,70 @@ def test_construct_with_env_variables():
                              image="test/image:dev")
 
     confirmation_names = ["ENV_VAR_ONE", "ENV_VAR_TWO", "ENV_VAR_THREE",
-                          "ELYRA_RUN_ID"]
-    confirmation_values = ["1", "2", "3"]
+                          "ELYRA_RUN_NAME"]
+    confirmation_values = ["1", "2", "3",
+                           "{{workflow.annotations.pipelines.kubeflow.org/run_name}}"]
     for env_val in notebook_op.container.env:
         assert env_val.name in confirmation_names
-        if env_val.name == 'ELYRA_RUN_ID':
-            assert env_val.value.startswith('test-pipeline')
-            confirmation_names.remove(env_val.name)
-        else:
-            assert env_val.value in confirmation_values
-            confirmation_names.remove(env_val.name)
-            confirmation_values.remove(env_val.value)
+        assert env_val.value in confirmation_values
+        confirmation_names.remove(env_val.name)
+        confirmation_values.remove(env_val.value)
+
+    # Verify confirmation values have been drained.
+    assert len(confirmation_names) == 0
+    assert len(confirmation_values) == 0
+
+    # same as before but explicitly specify the workflow engine type
+    # as Argo
+    notebook_op = NotebookOp(name="test",
+                             pipeline_name="test-pipeline",
+                             experiment_name="experiment-name",
+                             notebook="test_notebook.ipynb",
+                             cos_endpoint="http://testserver:32525",
+                             cos_bucket="test_bucket",
+                             cos_directory="test_directory",
+                             cos_dependencies_archive="test_archive.tgz",
+                             pipeline_envs={"ENV_VAR_ONE": "1", "ENV_VAR_TWO": "2", "ENV_VAR_THREE": "3"},
+                             image="test/image:dev",
+                             workflow_engine="Argo")
+
+    confirmation_names = ["ENV_VAR_ONE", "ENV_VAR_TWO", "ENV_VAR_THREE",
+                          "ELYRA_RUN_NAME"]
+    confirmation_values = ["1", "2", "3",
+                           "{{workflow.annotations.pipelines.kubeflow.org/run_name}}"]
+    for env_val in notebook_op.container.env:
+        assert env_val.name in confirmation_names
+        assert env_val.value in confirmation_values
+        confirmation_names.remove(env_val.name)
+        confirmation_values.remove(env_val.value)
+
+    # Verify confirmation values have been drained.
+    assert len(confirmation_names) == 0
+    assert len(confirmation_values) == 0
+
+
+def test_construct_with_env_variables_tekton():
+    notebook_op = NotebookOp(name="test",
+                             pipeline_name="test-pipeline",
+                             experiment_name="experiment-name",
+                             notebook="test_notebook.ipynb",
+                             cos_endpoint="http://testserver:32525",
+                             cos_bucket="test_bucket",
+                             cos_directory="test_directory",
+                             cos_dependencies_archive="test_archive.tgz",
+                             pipeline_envs={"ENV_VAR_ONE": "1", "ENV_VAR_TWO": "2", "ENV_VAR_THREE": "3"},
+                             image="test/image:dev",
+                             workflow_engine="Tekton")
+
+    confirmation_names = ["ENV_VAR_ONE", "ENV_VAR_TWO", "ENV_VAR_THREE",
+                          "ELYRA_RUN_NAME"]
+    confirmation_values = ["1", "2", "3",
+                           "$(context.pipelineRun.name)"]
+    for env_val in notebook_op.container.env:
+        assert env_val.name in confirmation_names
+        assert env_val.value in confirmation_values
+        confirmation_names.remove(env_val.name)
+        confirmation_values.remove(env_val.value)
 
     # Verify confirmation values have been drained.
     assert len(confirmation_names) == 0
