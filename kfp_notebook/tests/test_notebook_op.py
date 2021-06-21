@@ -422,13 +422,16 @@ def test_construct_with_env_variables_tekton():
 
     confirmation_names = ["ENV_VAR_ONE", "ENV_VAR_TWO", "ENV_VAR_THREE",
                           "ELYRA_RUN_NAME"]
-    confirmation_values = ["1", "2", "3",
-                           "$(context.pipelineRun.name)"]
+    confirmation_values = ["1", "2", "3"]
+    field_path = "metadata.annotations['pipelines.kubeflow.org/run_name']"
     for env_val in notebook_op.container.env:
         assert env_val.name in confirmation_names
-        assert env_val.value in confirmation_values
         confirmation_names.remove(env_val.name)
-        confirmation_values.remove(env_val.value)
+        if env_val.name == 'ELYRA_RUN_NAME':
+            assert env_val.value_from.field_ref.field_path == field_path, env_val.value_from.field_ref
+        else:
+            assert env_val.value in confirmation_values
+            confirmation_values.remove(env_val.value)
 
     # Verify confirmation values have been drained.
     assert len(confirmation_names) == 0
