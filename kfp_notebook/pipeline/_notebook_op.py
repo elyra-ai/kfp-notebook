@@ -21,6 +21,8 @@ import string
 from kfp.dsl import ContainerOp
 from kfp_notebook import __version__
 from kubernetes.client.models import V1EmptyDirVolumeSource, V1EnvVar, V1Volume, V1VolumeMount
+from kubernetes.client.models import V1EnvVarSource
+from kubernetes.client.models import V1ObjectFieldSelector
 from typing import Dict, List, Optional
 
 
@@ -247,10 +249,15 @@ class NotebookOp(ContainerOp):
         # variable in the container
         if workflow_engine and workflow_engine.lower() == 'argo':
             run_name_placeholder = '{{workflow.annotations.pipelines.kubeflow.org/run_name}}'
+            self.container.add_env_variable(V1EnvVar(name='ELYRA_RUN_NAME',
+                                                     value=run_name_placeholder))
         else:
-            run_name_placeholder = '$(context.pipelineRun.name)'
-        self.container.add_env_variable(V1EnvVar(name='ELYRA_RUN_NAME',
-                                                 value=run_name_placeholder))
+            # For Tekton derive the value from the specified pod annotation
+            annotation = 'pipelines.kubeflow.org/run_name'
+            field_path = f"metadata.annotations['{annotation}']"
+            self.container.add_env_variable(V1EnvVar(name='ELYRA_RUN_NAME',
+                                                     value_from=V1EnvVarSource(
+                                                         field_ref=V1ObjectFieldSelector(field_path=field_path))))
 
         # Attach metadata to the pod
         # Node type (a static type for this op)
