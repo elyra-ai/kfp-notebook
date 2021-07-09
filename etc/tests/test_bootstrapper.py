@@ -521,12 +521,12 @@ def test_package_installation_with_target_path(monkeypatch, virtualenv):
                   }
     to_install_dict = {'bleach': '3.1.5',
                        'ansiwrap': '0.7.0',
-                       'packaging': '20.9',
+                       'packaging': '21.0',
                        'text-extensions-for-pandas': "0.0.1-prealpha"
                        }
     correct_dict = {'ipykernel': '5.3.0',
                     'ansiwrap': '0.8.4',
-                    'packaging': '20.9',
+                    'packaging': '21.0',
                     'text-extensions-for-pandas': "0.0.1-prealpha"
                     }
 
