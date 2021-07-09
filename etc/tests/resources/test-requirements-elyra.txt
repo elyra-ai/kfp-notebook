@@ -6,16 +6,16 @@ ipython-genutils==0.2.0
 #jsonschema==3.2.0
 jupyter-client==6.1.6
 jupyter-core==4.6.3
-minio==5.0.10
+minio==6.0.2
 nbclient==0.4.1
 nbconvert==5.6.1
 nbformat==5.0.7
 papermill==2.1.2
 prompt-toolkit==3.0.5
 pyzmq==19.0.1
-requests==2.23.0
+requests==2.25.1
 text-extensions-for-pandas @ git+https://github.com/frreiss/text-extensions-for-pandas@a0dcb9196c6de6a2f58194cc49e48a25a18d099d
 tornado==6.0.4
 traitlets==4.3.3
-urllib3==1.25.9
+urllib3==1.26.5
 zebra===0.1.32
