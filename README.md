@@ -16,7 +16,11 @@ limitations under the License.
 {% endcomment %}
 -->
 
-[![PyPI version](https://badge.fury.io/py/kfp-notebook.svg)](https://badge.fury.io/py/kfp-notebook)
+# March 2022: This repository is no longer maintained
+
+The code for this project was merged into the https://github.com/elyra-ai/elyra repository.
+
+---
 
 `kfp-notebook` implements Kubeflow Pipelines operator `NotebookOp` that supports processing of notebooks, Python scripts, and R scripts in pipelines.
 
